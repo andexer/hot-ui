@@ -198,7 +198,7 @@ Fuente en `views/examples/`, guía en [`docs/ejemplos.md`](docs/ejemplos.md).
 ## Verificación
 
 ```bash
-composer test      # PHPUnit (114 tests)
+composer test      # PHPUnit (115 tests)
 composer smoke     # 384/384 renderizan
 composer examples  # valida login, dashboard y blog
 npm run typecheck && npm run build   # TS estricto → ESM nativo
