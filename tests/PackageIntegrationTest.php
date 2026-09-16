@@ -146,6 +146,35 @@ PHP);
         }
     }
 
+    public function testAutoPublishDetectsPublicUnderCwd(): void
+    {
+        $root = $this->tmp.'/app';
+        mkdir($root.'/public', 0o775, true);
+        $cwd = getcwd();
+        try {
+            chdir($root);
+            $copied = HotUI::autoPublish();
+        } finally {
+            if ($cwd !== false) {
+                chdir($cwd);
+            }
+        }
+
+        self::assertFileExists($root.'/public/css/hot-ui.css');
+        self::assertFileExists($root.'/public/js/app.js');
+        self::assertGreaterThan(0, $copied['css']);
+        self::assertGreaterThan(0, $copied['js']);
+    }
+
+    public function testAutoPublishWithExplicitDirStillWorks(): void
+    {
+        $public = $this->tmp.'/public_html';
+        $copied = HotUI::autoPublish($public);
+
+        self::assertFileExists($public.'/css/hot-ui.css');
+        self::assertGreaterThan(0, $copied['js']);
+    }
+
     public function testAssetsRejectUnknownGroup(): void
     {
         $this->expectException(\InvalidArgumentException::class);

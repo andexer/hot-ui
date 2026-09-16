@@ -25,9 +25,24 @@ vía Composer y funcionan dentro de cualquier vista CI4.
 
 ```bash
 composer require hot-ui/hot-ui
+```
 
-# publica css/ y js/ a FCPATH (public/)
-php -r "Components\Ci4\Ci4::publish();"
+Publicar `css/` y `js/` en tu `public/` es automático si añades el hook de
+Composer al `composer.json` de tu app (una sola vez):
+
+```json
+"scripts": {
+    "post-install-cmd": ["Components\\HotUI::autoPublish()"],
+    "post-update-cmd": ["Components\\HotUI::autoPublish()"]
+}
+```
+
+`HotUI::autoPublish()` resuelve el directorio público solo: usa `FCPATH` dentro
+de CI4, o detecta `public/`, `public_html/`, `web/`, `www/` o `html/` bajo la
+raíz del proyecto. Alternativa manual (sin hook):
+
+```bash
+php -r "require 'vendor/autoload.php'; Components\HotUI::autoPublish();"
 ```
 
 En un controller:
@@ -120,6 +135,7 @@ echo $ui->render('layouts/app', ['content' => '…', 'title' => 'Home']);
 ## Publicar assets
 
 ```php
+HotUI::autoPublish();                     // detecta public/ (o FCPATH en CI4)
 HotUI::publish('/mi/app/public');         // copia css/ y js/ compilados
 HotUI::publish('/mi/app/public', only: ['css']);   // o solo uno
 // En CI4, sin argumentos usa FCPATH:
@@ -144,6 +160,7 @@ Y en el layout:
 | `HotUI::views()` | Ruta absoluta a las vistas incluidas (layouts, partials, components) |
 | `HotUI::assets('css'\|'js')` | Ruta absoluta al runtime incluido |
 | `HotUI::publish(string $public, ?array $only = null)` | Copia css/js al público del host |
+| `HotUI::autoPublish(?string $publicDir, ?array $only)` | Detecta public/ o FCPATH y publica; para hooks de Composer |
 | `Ci4::boot()` | Instancia Hot-UI vinculada a CI4 (singleton) |
 | `Ci4::render($template, $data)` | Renderiza una página/partial a string |
 | `Ci4::view($template, $data)` | Igual que `render()` pero compila la sintaxis de tags `<ui:…>` |
