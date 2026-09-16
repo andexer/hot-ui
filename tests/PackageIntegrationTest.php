@@ -166,6 +166,24 @@ PHP);
         self::assertGreaterThan(0, $copied['js']);
     }
 
+    public function testAutoPublishIgnoresComposerEventObject(): void
+    {
+        $root = $this->tmp.'/app';
+        mkdir($root.'/public', 0o775, true);
+        $cwd = getcwd();
+        try {
+            chdir($root);
+            $copied = HotUI::autoPublish(new \stdClass());
+        } finally {
+            if ($cwd !== false) {
+                chdir($cwd);
+            }
+        }
+
+        self::assertFileExists($root.'/public/css/hot-ui.css');
+        self::assertGreaterThan(0, $copied['js']);
+    }
+
     public function testAutoPublishWithExplicitDirStillWorks(): void
     {
         $public = $this->tmp.'/public_html';

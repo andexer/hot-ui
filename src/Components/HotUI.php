@@ -85,8 +85,10 @@ final class HotUI
 
     /**
      * Publishes css/ + js/ to an auto-detected web root. Safe to call from a
-     * Composer post-install/post-update script, where no framework bootstrap
-     * (and therefore no FCPATH) exists.
+     * Composer post-install/post-update script (`"post-install-cmd":
+     * ["Components\\HotUI::autoPublish"]`), where no framework bootstrap (and
+     * therefore no FCPATH) exists. Compose passes its Event object as the first
+     * argument, which is accepted and ignored.
      *
      * Resolution order:
      *   1. $publicDir when given explicitly;
@@ -94,13 +96,17 @@ final class HotUI
      *   3. the first existing public/web directory under the process cwd
      *      (Composer runs event scripts from the host project root).
      *
-     * @param string|null       $publicDir Explicit public directory (optional).
+     * @param mixed             $publicDir Explicit public directory (optional string),
+     *                            or the Composer Event object injected by scripts.
      * @param list<string>|null $only      Restrict to ["css"] and/or ["js"].
      *
      * @return array<string, int> Number of files copied per group.
      */
-    public static function autoPublish(?string $publicDir = null, ?array $only = null): array
+    public static function autoPublish(mixed $publicDir = null, ?array $only = null): array
     {
+        if (is_object($publicDir)) {
+            $publicDir = null; // Composer event handler, not a directory.
+        }
         $publicDir ??= defined('FCPATH') ? rtrim(FCPATH, '/\\') : self::detectPublicDir();
 
         return Assets::publish($publicDir, $only);

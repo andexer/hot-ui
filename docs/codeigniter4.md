@@ -22,8 +22,8 @@ copian automáticamente a la carpeta `public/`:
 
 ```json
 "scripts": {
-    "post-install-cmd": ["Components\\HotUI::autoPublish()"],
-    "post-update-cmd": ["Components\\HotUI::autoPublish()"]
+    "post-install-cmd": ["Components\\HotUI::autoPublish"],
+    "post-update-cmd": ["Components\\HotUI::autoPublish"]
 }
 ```
 

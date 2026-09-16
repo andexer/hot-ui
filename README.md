@@ -32,8 +32,8 @@ Composer al `composer.json` de tu app (una sola vez):
 
 ```json
 "scripts": {
-    "post-install-cmd": ["Components\\HotUI::autoPublish()"],
-    "post-update-cmd": ["Components\\HotUI::autoPublish()"]
+    "post-install-cmd": ["Components\\HotUI::autoPublish"],
+    "post-update-cmd": ["Components\\HotUI::autoPublish"]
 }
 ```
 
