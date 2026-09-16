@@ -46,7 +46,10 @@
         "examples": "@php bin/examples.php"
     },
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "platform": {
+            "php": "8.2.0"
+        }
     },
     "archive": {
         "exclude": [
