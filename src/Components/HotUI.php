@@ -24,7 +24,7 @@ use Components\Support\Assets;
  */
 final class HotUI
 {
-    public const string VERSION = '2.0.0';
+    public const string VERSION = '0.9.2';
 
     /**
      * Dedicated instance for code outside any template.
