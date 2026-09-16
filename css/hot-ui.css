@@ -2,6 +2,7 @@
 
 @source '../views';
 @source '../js/src';
+@source '../src';
 
 @custom-variant dark (&:is(.dark *));
 

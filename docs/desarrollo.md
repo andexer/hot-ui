@@ -35,7 +35,8 @@ js/
     ├── app.ts           cargador: kernel + islas → alpine:init → start()
     ├── hot/             kernel (plugin, directivas x-hot-*, engines, dom, theme)
     └── components/ui/   islas TS espejo de las vistas (mismo nombre kebab)
-css/hot-ui.css           fundaciones + tokens tema
+css/hot-ui.css           fuente Tailwind v4 (fundaciones + tokens tema)
+css/hot-ui.min.css       CSS compilado que se distribuye (npm run build:css)
 demo/router.php          router de la demo (estáticos + página)
 docs/*.md                documentación del proyecto (español)
 ```
@@ -46,7 +47,7 @@ docs/*.md                documentación del proyecto (español)
 2. **Cambios de comportamiento**: edita la isla `.ts`; `npm run dev` mantiene
    el `.js` compilado al día mientras pruebas en la demo.
 3. **Componente nuevo**: sigue `docs/guia-componentes.md`.
-4. **Antes de commit**: `composer test && composer smoke && npm run typecheck && npm run build`.
+4. **Antes de commit**: `composer test && composer smoke && npm run typecheck && npm run build` — `build` regenera `css/hot-ui.min.css`; commitea ese `.min.css` (es lo que se distribuye).
 
 ## Consumo desde una aplicación externa
 

@@ -23,7 +23,7 @@ $meta ??= null;
 <html lang="es" class="dark">
 <head>
 <?= $meta ?? '' ?>
-<link rel="stylesheet" href="/css/hot-ui.css">
+<link rel="stylesheet" href="/css/hot-ui.min.css">
 <style>body { display: grid; place-items: center; min-height: 100vh; }</style>
 </head>
 <body class="bg-background text-foreground antialiased">

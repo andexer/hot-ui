@@ -23,7 +23,7 @@ $user ??= [];
 <html lang="es" class="dark">
 <head>
 <?= $meta ?? '' ?>
-<link rel="stylesheet" href="/css/hot-ui.css">
+<link rel="stylesheet" href="/css/hot-ui.min.css">
 </head>
 <body class="bg-background text-foreground min-h-screen antialiased">
 <div class="flex min-h-screen">

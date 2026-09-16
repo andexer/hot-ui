@@ -39,7 +39,7 @@ HotUI::autoPublish();          // detecta FCPATH / public/
 Ci4::publish();                // solo FCPATH
 ```
 
-Esto copia `css/hot-ui.css` y `js/app.js` (con sus fuentes) a la carpeta
+Esto copia `css/` (hot-ui.min.css compilado) y `js/` (app.js con sus fuentes) a la carpeta
 `public/` de CI4.
 
 ## Uso en un controller

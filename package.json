@@ -7,13 +7,15 @@
     "license": "MIT",
     "scripts": {
         "dev": "tsc --watch",
-        "build": "tsc",
+        "build": "tsc && npm run build:css",
+        "build:css": "tailwindcss -i css/hot-ui.css -o css/hot-ui.min.css --minify",
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
         "alpinejs": "^3.14.0"
     },
     "devDependencies": {
+        "@tailwindcss/cli": "^4.1.11",
         "@types/alpinejs": "^3.13.11",
         "typescript": "^6.0.3"
     }

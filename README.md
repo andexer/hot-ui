@@ -145,7 +145,7 @@ Ci4::publish();                           // → public/css + public/js
 Y en el layout:
 
 ```html
-<link rel="stylesheet" href="/css/hot-ui.css">
+<link rel="stylesheet" href="/css/hot-ui.min.css">
 <script type="module" src="/js/app.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>lucide.createIcons()</script>
@@ -198,7 +198,7 @@ Fuente en `views/examples/`, guía en [`docs/ejemplos.md`](docs/ejemplos.md).
 ## Verificación
 
 ```bash
-composer test      # PHPUnit (115 tests)
+composer test      # PHPUnit (116 tests)
 composer smoke     # 384/384 renderizan
 composer examples  # valida login, dashboard y blog
 npm run typecheck && npm run build   # TS estricto → ESM nativo

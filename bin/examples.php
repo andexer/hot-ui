@@ -57,7 +57,7 @@ foreach ($examples as $template => [$layout, $needles]) {
         "título [$titleNeedle]" => str_contains($html, $titleNeedle),
         "contenido [$bodyNeedle]" => str_contains($html, $bodyNeedle),
         'doctype' => str_starts_with(ltrim($html), '<!DOCTYPE html>'),
-        'css incluido' => str_contains($html, '/css/hot-ui.css'),
+        'css incluido' => str_contains($html, '/css/hot-ui.min.css'),
         'js incluido' => str_contains($html, '/js/app.js'),
         'sin fugas de código' => preg_match('/<\?php|extract\(\$__ctx/', $html) !== 1,
     ];

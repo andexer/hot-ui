@@ -114,7 +114,7 @@ PHP);
         self::assertStringContainsString('data-slot="badge"', $html);
 
         $copied = Ci4::publish($public);
-        self::assertFileExists($public.'/css/hot-ui.css');
+        self::assertFileExists($public.'/css/hot-ui.min.css');
         self::assertGreaterThan(0, $copied['css']);
         self::assertGreaterThan(0, $copied['js']);
     }
@@ -129,8 +129,19 @@ PHP);
     public function testViewsAndAssetsPathsExist(): void
     {
         self::assertFileExists(HotUI::views().'/components/ui/card.php');
-        self::assertFileExists(HotUI::assets('css').'/hot-ui.css');
+        self::assertFileExists(HotUI::assets('css').'/hot-ui.min.css');
         self::assertFileExists(HotUI::assets('js').'/app.js');
+    }
+
+    public function testShippedCssIsCompiledNotTailwindSource(): void
+    {
+        $min = (string) file_get_contents(HotUI::assets('css').'/hot-ui.min.css');
+        $src = (string) file_get_contents(HotUI::assets('css').'/hot-ui.css');
+
+        self::assertStringContainsString('@theme', $src, 'Source must keep Tailwind v4 directives');
+        self::assertStringNotContainsString('@import \'tailwindcss\'', $min, 'Consumers must get compiled CSS, no imports');
+        self::assertStringNotContainsString('@theme', $min);
+        self::assertStringContainsString('.bg-background', $min, 'Compiled bundle must include component utilities');
     }
 
     public function testComposerPluginSubscribesToInstallAndUpdateWithoutRootScripts(): void
@@ -160,7 +171,7 @@ PHP);
         self::assertArrayHasKey('js', $copied);
         self::assertGreaterThan(0, $copied['css']);
         self::assertGreaterThan(0, $copied['js']);
-        self::assertFileExists($public.'/css/hot-ui.css');
+        self::assertFileExists($public.'/css/hot-ui.min.css');
         self::assertFileExists($public.'/js/app.js');
         self::assertFileExists($public.'/js/src/app.js');
 
@@ -213,7 +224,7 @@ PHP);
         $public = $this->tmp.'/public_html';
         $copied = HotUI::autoPublish($public);
 
-        self::assertFileExists($public.'/css/hot-ui.css');
+        self::assertFileExists($public.'/css/hot-ui.min.css');
         self::assertGreaterThan(0, $copied['js']);
     }
 

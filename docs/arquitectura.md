@@ -8,7 +8,7 @@ dependencias de runtime más allá de `alpinejs`.
 
 ```
 ┌─────────────────────────────  PÁGINA  ─────────────────────────────┐
-│  <link /css/hot-ui.css>          <script module /js/app.js>        │
+│  <link /css/hot-ui.min.css>      <script module /js/app.js>      │
 └───────────────┬──────────────────────────────┬────────────────────┘
                 │                              │
         views/components/{ui,blocks}/*.php    js/src/**            │
@@ -55,7 +55,7 @@ nombrados pasados. La lógica vive arriba; el marcado abajo, legible.
 - **`dom/wiring.ts`**: re-derivación idempotente de ARIA ante cambios del DOM
   (`keepWired`), ids estables, resolución del control real dentro de wrappers.
 - **`stores/theme.ts`**: modo/base/preset/radius/fuente… persistidos y
-  aplicados como data-atributos que consume `css/hot-ui.css`.
+  aplicados como data-atributos que consume `css/hot-ui.min.css`.
 
 ### Islas (`components/ui/<componente>.ts`) — espejo 1:1 del PHP
 
