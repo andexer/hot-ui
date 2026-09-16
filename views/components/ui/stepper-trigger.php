@@ -1,0 +1,16 @@
+<?php
+
+declare(strict_types=1);
+
+extract(props($__ctx));
+?>
+<button
+    type="button"
+    data-slot="stepper-trigger"
+    :data-state="step > itemStep ? 'completed' : (step === itemStep ? 'active' : 'inactive')"
+    :disabled="disabled"
+    @click="!disabled && (step = itemStep)"
+    <?= $attributes->twMerge("group/trigger focus-visible:ring-ring/50 inline-flex items-center gap-2.5 rounded-md text-start outline-none transition-colors focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50") ?>
+>
+    <?= $slot ?>
+</button>

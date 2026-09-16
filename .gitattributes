@@ -1,0 +1,21 @@
+# Ship only what consumers need; everything else lives in the repo.
+/demo            export-ignore
+/docs            export-ignore
+/tests           export-ignore
+/bin             export-ignore
+/agent           export-ignore
+/.agents         export-ignore
+/.claude         export-ignore
+/.docgen         export-ignore
+/node_modules    export-ignore
+/skills-lock.json export-ignore
+/composer.lock   export-ignore
+/.phpunit.cache  export-ignore
+/js/src/**/*.ts  export-ignore
+/js/src/**/*.map export-ignore
+/phpunit.xml     export-ignore
+/tsconfig.json   export-ignore
+/package.json    export-ignore
+/package-lock.json export-ignore
+/.gitattributes  export-ignore
+/.gitignore      export-ignore

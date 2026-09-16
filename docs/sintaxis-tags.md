@@ -1,0 +1,128 @@
+# Sintaxis de tags `<ui:…>` y `<blocks:…>`
+
+Desde v2.0, además de los estilos *streaming* (`open()`/`into()`/`close()`) y
+*por argumentos* (`ui()->card(…)`), puedes escribir los componentes con una
+sintaxis literal tipo Blade/Flux, sin buffers:
+
+```html
+<ui:card class="w-full">
+    <ui:slot name="header">
+        <blocks:kicker>portada</blocks:kicker>
+    </ui:slot>
+    <ui:button :variant="$variant" @click="guardar()">Guardar</ui:button>
+</ui:card>
+```
+
+No necesita `ob_start()`/`ob_get_clean()` ni closures: el compilador traduce el
+archivo una sola vez a las llamadas del API de streaming (con `$__ui->open()`,
+`$__ui->into()`, `$__ui->close()` y `$__ui->renderComponent()`), lo deja en
+caché compilada y lo incluye como PHP puro. El resto del archivo (HTML normal,
+PHP, `<script>`, `<style>`, comentarios) **no se toca**.
+
+## Cómo se renderiza
+
+```php
+// Standalone
+echo $ui->view('pagina', ['variant' => 'destructive']);
+
+// CódigoIgniter 4 — en un controller:
+use Components\Ci4\Ci4;
+$page = Ci4::view('pagina', ['variant' => 'destructive']);
+
+// CódigoIgniter 4 — con el helper global, desde cualquier vista CI4:
+echo ui_view('pagina', ['variant' => 'destructive']);
+```
+
+La resolución es idéntica a `render()`: busca `{base}/{archivo}.php` donde
+`{base}` es `viewsPath()` (standalone), `APPPATH.'Views'` (CI4) o tu
+`view_path` configurado. Los componentes anidados se siguen resolviendo contra
+`views/components/{ui,blocks}/`.
+
+Compila una vez por cambio de fuente (clave = `sha1(ruta+modificado+tamaño)`) y
+cachea en `WRITEPATH/cache/hotui` (CI4) o `sys_get_temp_dir()/hotui-compiled`
+(standalone). Borrar esa carpeta recrea la caché.
+
+## Semántica de atributos (reglas híbridas)
+
+| Atributo | Ejemplo | Tratamiento |
+|---|---|---|
+| Estático | `variant="outline"` | Valor literal (escapado al renderizar) |
+| Arroba reasignado | `@click`, `@keydown.enter.prevent` | → `x-on:…` (string literal para Alpine) |
+| `x-*` / `data-*` / `aria-*` | `x-model="q"`, `data-state="open"` | String literal (administra Alpine/ARIA) |
+| `:var` (PHP) | `:variant="$variant"` | Evaluado en `eval` de contexto PHP |
+| `:class` | `:class="$extra"` | Concatenado con `class` (`class . ' ' . $extra`) |
+| `:data-*` / `:aria-*` | `:data-state="abierto ? 'on' : 'off'"` | String literal (NO se evalúa) |
+| Sin valor | `disabled` | `true` (booleano) |
+
+> Regla de oro: **`:` + prop = PHP**; `x-*`, `@*`, `data-*`, `aria-*` e
+> `:data-*`/`:aria-*` = strings literales. Si quieres una prop dinámica que no
+> sea `class`, usa `:prop="$expresion"`.
+
+### Props multi-palabra: kebab → camelCase
+
+Las props declaradas camelCase se escriben como HTML normal (kebab) y se
+mapean a runtime en `props()`:
+
+```html
+<ui:pagination-link is-active>1</ui:pagination-link>
+<ui:calendar :default-month="$ahora" :disable-navigation="true" />
+<comparison-table :close-on-overlay="$cerrar" />
+```
+
+`is-active` → prop `isActive`, `default-month` → `defaultMonth`,
+`close-on-overlay` → `closeOnOverlay`. Los atributos que NO coinciden con una
+prop declarada se quedan literal en el `$attributes` bag (útil para atributos
+nativos o SVG como `stroke-width`).
+
+## Slots
+
+### Slot por defecto
+
+```html
+<ui:button>lorem ipsum</ui:button>
+```
+
+### Slot con nombre
+
+```html
+<ui:card>
+    <ui:slot name="header">
+        <ui:card-title>Resumen</ui:card-title>
+    </ui:slot>
+    Contenido del slot por defecto…
+</ui:card>
+```
+
+Los slots con nombre se exponen al componente como **variables individuales**
+(`$header` en el ejemplo) — igual que en el estilo streaming/`props()`. No
+existen como `$slots[…]`. Solo se renderizan si la plantilla del componente las
+imprime (p. ej. `<?= $header ?>`); los `ui:slot` de componentes que no los
+declaran simplemente se pierden en el cuerpo.
+
+## Reservado: `$__ui`
+
+Las páginas compiladas usan la variable reservada `$__ui` para enlazar la
+instancia del renderer correcta (importante en CI4/tests). No declare una
+variable `$__ui` en tus vistas.
+
+## Fuera de alcance en v1
+
+- `@if`/`@foreach` y directivas Blade → usa PHP normal (`<?php if (…) … ?>`).
+- Herencia de layouts estilo Blade (`@extends`) → usa `layouts/` + `render()`.
+- Componentes dinámicos → escribe el tag o usa `ui()->componentName(…)`.
+
+## Soporte a nivel de archivo
+
+- Los bloques `<?php … ?>` y `<?= … ?>` se saltan (no se escanean).
+- `<script>`, `<style>` y comentarios `<!-- … -->` se consumen íntegros; un
+  `<ui:…>` dentro de ellos **no** se compila.
+- `<ui:…>` dentro del *valor* de un atributo ajeno (`<img src="<ui:fake>">`)
+  tampoco se compila.
+- Namespaces no registrados (`<foo:bar>`) se dejan como texto literal.
+- Errores de balance lanzan `InvalidArgumentException`
+  (p. ej. "Mismatched closing tag [</ui:card-header>]; expected [</ui:card>]").
+
+## Demo
+
+Con la demo corriendo (`php -S localhost:8080 demo/router.php`), la ruta
+`/sintaxis` renderiza `views/examples/sintaxis.php` íntegramente con tags.

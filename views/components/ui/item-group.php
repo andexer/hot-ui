@@ -1,0 +1,9 @@
+<?php
+
+declare(strict_types=1);
+
+extract(props($__ctx));
+?>
+<div data-slot="item-group" <?= $attributes->twMerge('group/item-group flex flex-col') ?>>
+    <?= $slot ?>
+</div>

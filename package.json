@@ -1,0 +1,20 @@
+{
+    "name": "hot-ui",
+    "description": "Hot-UI — Alpine.js islands for the Hot/UI PHP component library (zero-dependency). Only Alpine as runtime dependency.",
+    "private": true,
+    "type": "module",
+    "version": "1.0.0",
+    "license": "MIT",
+    "scripts": {
+        "dev": "tsc --watch",
+        "build": "tsc",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "alpinejs": "^3.14.0"
+    },
+    "devDependencies": {
+        "@types/alpinejs": "^3.13.11",
+        "typescript": "^6.0.3"
+    }
+}

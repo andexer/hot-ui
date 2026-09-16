@@ -1,0 +1,82 @@
+{
+    "name": "hot-ui/hot-ui",
+    "description": "Hot-UI — zero-dependency shadcn-style UI component library for plain PHP 8.2+ with typed Alpine.js islands. No framework, no template engine: works in CodeIgniter 4, League Plates, Blade or any PHP app.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Arvelo Falcon",
+            "email": "arvelofalcon@gmail.com"
+        }
+    ],
+    "keywords": [
+        "codeigniter",
+        "components",
+        "ui",
+        "alpinejs",
+        "shadcn",
+        "tailwind",
+        "no-framework",
+        "zero-dependency"
+    ],
+    "require": {
+        "php": "^8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Components\\": "src/Components/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Components\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit --colors=always",
+        "smoke": "@php bin/smoke.php",
+        "examples": "@php bin/examples.php"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "archive": {
+        "exclude": [
+            "/node_modules",
+            "/vendor",
+            "/demo",
+            "/docs",
+            "/tests",
+            "/bin",
+            "/.agents",
+            "/.claude",
+            "/.docgen",
+            "/agent",
+            "/composer.lock",
+            "/.phpunit.cache",
+            "/phpunit.xml",
+            "/tsconfig.json",
+            "/package.json",
+            "/package-lock.json",
+            "/js/src/**/*.ts",
+            "/js/src/**/*.d.ts",
+            "/js/src/**/*.map"
+        ]
+    },
+    "extra": {
+        "hot-ui": {
+            "assets": [
+                "css",
+                "js"
+            ],
+            "views": "views"
+        }
+    },
+    "minimum-stability": "stable"
+}

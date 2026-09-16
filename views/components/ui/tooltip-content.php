@@ -1,0 +1,47 @@
+<?php
+
+declare(strict_types=1);
+
+extract(props($__ctx, [
+    'side' => 'top',
+    'align' => 'center',
+    'sideOffset' => 4,
+    'arrow' => true,
+    'state' => 'open',
+]));
+
+$placement = $side.($align === 'center' ? '' : '-'.$align);
+$anchorAttr = 'x-hot-anchor.'.$placement.'.offset.'.$sideOffset.'.no-size="$refs.trigger"';
+?>
+<template x-teleport="body">
+    <div
+        x-hot-dialog-layer
+        x-show="<?= e($state) ?>"
+        x-cloak
+        <?= $anchorAttr ?>
+        :id="$id('hot-tooltip')"
+        role="tooltip"
+        data-slot="tooltip-content"
+        data-side="<?= e($side) ?>"
+        :data-state="(<?= e($state) ?>) ? 'open' : 'closed'"
+        x-transition:enter="transition ease-out duration-150"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-100"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        <?= $attributes->twMerge('group/tooltip bg-primary text-primary-foreground fixed z-50 w-fit max-w-xs rounded-md px-3 py-1.5 text-xs') ?>
+    >
+        <?= $slot ?>
+        <?php if ($arrow): ?>
+            <span
+                aria-hidden="true"
+                class="bg-inherit absolute size-2.5 rotate-45 rounded-[2px]
+                    group-data-[side=top]/tooltip:-bottom-1 group-data-[side=top]/tooltip:left-1/2 group-data-[side=top]/tooltip:-translate-x-1/2
+                    group-data-[side=bottom]/tooltip:-top-1 group-data-[side=bottom]/tooltip:left-1/2 group-data-[side=bottom]/tooltip:-translate-x-1/2
+                    group-data-[side=left]/tooltip:-right-1 group-data-[side=left]/tooltip:top-1/2 group-data-[side=left]/tooltip:-translate-y-1/2
+                    group-data-[side=right]/tooltip:-left-1 group-data-[side=right]/tooltip:top-1/2 group-data-[side=right]/tooltip:-translate-y-1/2"
+            ></span>
+        <?php endif; ?>
+    </div>
+</template>
