@@ -27,19 +27,19 @@ vía Composer y funcionan dentro de cualquier vista CI4.
 composer require hot-ui/hot-ui
 ```
 
-Publicar `css/` y `js/` en tu `public/` es automático si añades el hook de
-Composer al `composer.json` de tu app (una sola vez):
+Hot-UI incluye un **plugin de Composer** que publica `css/` y `js/` en tu web
+root automáticamente en cada `composer install|update`. No tienes que editar
+`composer.json`; solo autoriza el plugin **una vez por proyecto**:
 
-```json
-"scripts": {
-    "post-install-cmd": ["Components\\HotUI::autoPublish"],
-    "post-update-cmd": ["Components\\HotUI::autoPublish"]
-}
+```bash
+composer config allow-plugins.hot-ui/hot-ui true
 ```
+
+(La primera vez, Composer te preguntará y basta responder `y`.)
 
 `HotUI::autoPublish()` resuelve el directorio público solo: usa `FCPATH` dentro
 de CI4, o detecta `public/`, `public_html/`, `web/`, `www/` o `html/` bajo la
-raíz del proyecto. Alternativa manual (sin hook):
+raíz del proyecto. Publicación manual (si algún día la necesitas):
 
 ```bash
 php -r "require 'vendor/autoload.php'; Components\HotUI::autoPublish();"

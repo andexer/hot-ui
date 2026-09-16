@@ -41,7 +41,13 @@ final class PackageIntegrationTest extends TestCase
     {
         $composer = json_decode((string) file_get_contents(dirname(__DIR__).'/composer.json'), true, 512, JSON_THROW_ON_ERROR);
 
-        self::assertSame(['php' => '^8.2'], $composer['require'], 'Runtime must depend only on the language');
+        // composer-plugin-api is a virtual metapackage provided by Composer
+        // itself, not a real dependency: runtime still needs only PHP.
+        self::assertSame(
+            ['php' => '^8.2', 'composer-plugin-api' => '^2.6'],
+            $composer['require'],
+            'Runtime must depend only on the language',
+        );
     }
 
     public function testHelpersAndEntryPointsAreAutoloadable(): void
@@ -125,6 +131,24 @@ PHP);
         self::assertFileExists(HotUI::views().'/components/ui/card.php');
         self::assertFileExists(HotUI::assets('css').'/hot-ui.css');
         self::assertFileExists(HotUI::assets('js').'/app.js');
+    }
+
+    public function testComposerPluginSubscribesToInstallAndUpdateWithoutRootScripts(): void
+    {
+        $plugin = new \Components\Composer\HotUIPlugin();
+        $composer = json_decode((string) file_get_contents(dirname(__DIR__).'/composer.json'), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertInstanceOf(\Composer\Plugin\PluginInterface::class, $plugin);
+        self::assertInstanceOf(\Composer\EventDispatcher\EventSubscriberInterface::class, $plugin);
+        self::assertSame('composer-plugin', $composer['type'], 'Package must be a Composer plugin to publish on its own');
+        self::assertSame('Components\\Composer\\HotUIPlugin', $composer['extra']['class']);
+        self::assertSame(
+            [
+                \Composer\Script\ScriptEvents::POST_INSTALL_CMD => 'publishAssets',
+                \Composer\Script\ScriptEvents::POST_UPDATE_CMD => 'publishAssets',
+            ],
+            \Components\Composer\HotUIPlugin::getSubscribedEvents(),
+        );
     }
 
     public function testPublishCopiesRuntimeAssetsOnly(): void

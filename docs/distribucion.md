@@ -31,8 +31,9 @@ Hot-UI se distribuye como paquete Composer desde
 Desde la raíz de un app real (p. ej. tu CI4 `~/D/my-ci4-site`):
 
 ```bash
-composer require hot-ui/hot-ui           # baja v0.9.0 de Packagist
-ls public/css public/js                  # el hook post-install ya publicó
+composer config allow-plugins.hot-ui/hot-ui true   # autoriza el plugin (una vez)
+composer require hot-ui/hot-ui                     # v0.9.x
+ls public/css public/js                            # el plugin ya publicó
 ```
 
 Detalles que comprobar:
@@ -40,8 +41,8 @@ Detalles que comprobar:
 - `vendor/hot-ui/hot-ui` existe y contiene `src/`, `views/`, `css/`, `js/`.
 - No aparece `node_modules/`, `docs/`, `tests/` ni fuentes `.ts` (los excluye
   `.gitattributes` `export-ignore`).
-- `public/css/hot-ui.css` y `public/js/app.js` se crearon solos por el
-  `post-install-cmd` (ver `README.md` → "Uso en CodeIgniter 4").
+- `public/css/hot-ui.css` y `public/js/app.js` se crearon solos (plugin de
+  Composer; ver `README.md` → "Uso en CodeIgniter 4").
 - Un controller con `Ci4::view()` / `Ci4::render()` sirve una página con
   componentes.
 

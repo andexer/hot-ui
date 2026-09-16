@@ -16,15 +16,12 @@ Composer autoload carga `src/helpers.php` (funciones globales) y PSR-4
 
 ## Publicar assets
 
-Añade el siguiente hook **una sola vez** en el `composer.json` de tu app CI4.
-Tras cada `composer install` o `composer update`, los archivos css/js se
-copian automáticamente a la carpeta `public/`:
+Automático: Hot-UI es un **plugin de Composer** que copia `css/` y `js/` a tu
+`public/` tras cada `composer install` o `composer update`. No edites
+`composer.json`; autoriza el plugin una vez por proyecto:
 
-```json
-"scripts": {
-    "post-install-cmd": ["Components\\HotUI::autoPublish"],
-    "post-update-cmd": ["Components\\HotUI::autoPublish"]
-}
+```bash
+composer config allow-plugins.hot-ui/hot-ui true
 ```
 
 `HotUI::autoPublish()` usa `FCPATH` automáticamente dentro de CI4. Alternativas
