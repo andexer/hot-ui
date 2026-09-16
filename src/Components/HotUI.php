@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Components;
 
 use Components\Support\Assets;
+use Components\Support\Views;
 
 /**
  * Standard entry-point facade for host applications.
@@ -24,7 +25,10 @@ use Components\Support\Assets;
  */
 final class HotUI
 {
-    public const VERSION = '0.9.5';
+    public const VERSION = '0.9.6';
+
+    /** @var list<string> Groups publishViews() can copy on their own. */
+    private const VIEW_GROUPS = ['components', 'layouts', 'partials'];
 
     /**
      * Dedicated instance for code outside any template.
@@ -132,5 +136,41 @@ final class HotUI
             implode(', ', array_map(static fn (string $candidate): string => '/'.$candidate, $candidates)),
             $cwd,
         ));
+    }
+
+    /**
+     * Copies the bundled views (components/, layouts/, partials/) into a host
+     * project so developers own and customize them. Automatic when used inside
+     * CodeIgniter 4 (APPPATH.'Views/hotui'); otherwise defaults to
+     * getcwd().'/app/Views/hotui' and can be overridden explicitly.
+     *
+     * After publishing, point the engine at the local copy:
+     *
+     *   HotUI::shared(['view_path' => APPPATH.'Views/hotui']);
+     *
+     * @param string|null        $viewDir Target views directory.
+     * @param list<string>|null  $only    Restrict to ["components"], ["layouts"]
+     *                                    and/or ["partials"]; null copies all.
+     *
+     * @return array<string, int> Copied file count per group.
+     */
+    public static function publishViews(?string $viewDir = null, ?array $only = null): array
+    {
+        if ($only !== null) {
+            foreach ($only as $group) {
+                if (! in_array($group, self::VIEW_GROUPS, true)) {
+                    throw new \InvalidArgumentException(sprintf('Unknown views group [%s].', $group));
+                }
+            }
+        }
+
+        $viewDir ??= defined('APPPATH')
+            ? rtrim(APPPATH, '/\\').'/Views/hotui'
+            : (getcwd() !== false ? getcwd().'/app/Views/hotui' : null);
+        if ($viewDir === null) {
+            throw new \RuntimeException('HotUI::publishViews() could not resolve a views directory; pass it explicitly.');
+        }
+
+        return Views::publish($viewDir, $only);
     }
 }

@@ -39,6 +39,30 @@ HotUI::autoPublish();          // detecta FCPATH / public/
 Ci4::publish();                // solo FCPATH
 ```
 
+## Personalizar componentes (publicar vistas)
+
+Los componentes viven en `vendor/hot-ui/hot-ui/views` y se consumen sin copiar.
+Para inspeccionarlos y editarlos dentro de tu app:
+
+```bash
+php -r "require 'vendor/autoload.php'; Components\Ci4\Ci4::publishViews();"
+```
+
+Copia `components/`, `layouts/` y `partials/` a `app/Views/hotui`. Luego usa tu
+copia local (una vez, en un service/bootstrap):
+
+```php
+Ci4::boot(APPPATH.'Views/hotui');
+```
+
+A partir de ahí `app/Views/hotui/components/ui/*.php` son tuyos. Para traer
+cambios de una actualización: vuelve a publicar y reintegra tus modificaciones.
+
+> Hot-UI no necesita Vite ni package.json en tu proyecto. El CSS ya viaja
+> compilado (`css/hot-ui.min.css`) y el JS es ESM estático (`js/app.js`);
+> ambos se sirven desde `public/`. El tooling Node/Tailwind vive solo en el
+> repo del mantenedor.
+
 Esto copia `css/` (hot-ui.min.css compilado) y `js/` (app.js con sus fuentes) a la carpeta
 `public/` de CI4.
 

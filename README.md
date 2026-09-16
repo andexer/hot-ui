@@ -45,6 +45,36 @@ raíz del proyecto. Publicación manual (si algún día la necesitas):
 php -r "require 'vendor/autoload.php'; Components\HotUI::autoPublish();"
 ```
 
+### Llevarte los componentes a tu proyecto (publicar vistas)
+
+Por defecto los componentes viven en `vendor/hot-ui/hot-ui/views` y se
+consumen sin copiar nada. Si quieres **verlos y personalizarlos dentro de tu
+app**, publica las vistas y apunta el motor a la copia local:
+
+```bash
+composer exec -- php -r "Components\HotUI::publishViews();"
+```
+
+Dentro de CodeIgniter 4 copia a `app/Views/hotui` (components/, layouts/,
+partials/). Después, en tu bootstrap:
+
+```php
+Components\Ci4\Ci4::boot(APPPATH.'Views/hotui');   // usa tu copia local
+```
+
+Desde ahí editas `app/Views/hotui/components/ui/card.php` a tu gusto; vuelve
+a ejecutar `publishViews()` para traer cambios de una actualización (reescribe,
+así que guarda tus modificaciones antes de volver a publicar).
+
+### ¿Y Vite / package.json?
+
+No hace falta. Hot-UI es **cero-tooling**: entrega `css/hot-ui.min.css` ya
+compilado y `js/app.js` como ESM estático; el navegador los carga directo desde
+`/css/` y `/js/` de tu `public/`. El `package.json` con `tailwindcss`,
+`typescript` y Vite es **solo del mantenedor** (dentro del repo de hot-ui, no se
+instala en tu proyecto). Si tu app ya usa Vite, igualmente puedes servirlos
+desde `public/` o importarlos como estáticos; Hot-UI no exige ningún build.
+
 En un controller:
 
 ```php
@@ -198,7 +228,7 @@ Fuente en `views/examples/`, guía en [`docs/ejemplos.md`](docs/ejemplos.md).
 ## Verificación
 
 ```bash
-composer test      # PHPUnit (116 tests)
+composer test      # PHPUnit (119 tests)
 composer smoke     # 384/384 renderizan
 composer examples  # valida login, dashboard y blog
 npm run typecheck && npm run build   # TS estricto → ESM nativo

@@ -6,6 +6,7 @@ namespace Components\Ci4;
 
 use Components\HotUI;
 use Components\Support\Assets;
+use Components\Support\Views;
 use Components\Ui;
 
 /**
@@ -91,5 +92,32 @@ final class Ci4
         }
 
         return Assets::publish($publicDir, $only);
+    }
+
+    /**
+     * Copies the bundled views (components/, layouts/, partials/) into your
+     * project so you own and customize them. Defaults to APPPATH.'Views/hotui'.
+     * Then use the local copy:
+     *
+     *   Ci4::boot(APPPATH.'Views/hotui');
+     *
+     * @param string|null        $viewDir Views target (default: APPPATH.'Views/hotui').
+     * @param list<string>|null  $only    Restrict to ["components"], ["layouts"]
+     *                                    and/or ["partials"]; null copies all.
+     *
+     * @return array<string, int> Copied file count per group.
+     */
+    public static function publishViews(?string $viewDir = null, ?array $only = null): array
+    {
+        if ($viewDir === null) {
+            if (! defined('APPPATH')) {
+                throw new \InvalidArgumentException(
+                    'Ci4::publishViews() needs a views directory; pass it explicitly or run inside CodeIgniter 4 (APPPATH).',
+                );
+            }
+            $viewDir = rtrim(APPPATH, '/\\').'/Views/hotui';
+        }
+
+        return Views::publish($viewDir, $only);
     }
 }

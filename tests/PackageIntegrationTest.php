@@ -235,6 +235,52 @@ PHP);
         Assets::path('fonts');
     }
 
+    public function testPublishViewsCopiesComponentsLayoutsAndPartials(): void
+    {
+        $target = $this->tmp.'/app/Views/hotui';
+        $copied = HotUI::publishViews($target);
+
+        self::assertArrayHasKey('components', $copied);
+        self::assertArrayHasKey('layouts', $copied);
+        self::assertArrayHasKey('partials', $copied);
+        self::assertGreaterThan(300, $copied['components']);
+        self::assertGreaterThan(0, $copied['layouts']);
+        self::assertGreaterThan(0, $copied['partials']);
+
+        self::assertFileExists($target.'/components/ui/card.php');
+        self::assertFileExists($target.'/layouts/app.php');
+        self::assertFileExists($target.'/partials/meta.php');
+
+        foreach ($this->allFiles($target) as $path) {
+            self::assertStringEndsWith('.php', $path, 'publishViews must only copy PHP views');
+        }
+    }
+
+    public function testPublishedViewsOwnedByAppTakeOverRendering(): void
+    {
+        $owned = $this->tmp.'/app2/hotui';
+        HotUI::publishViews($owned);
+
+        $badgePath = $owned.'/components/ui/badge.php';
+        $customized = file_get_contents($badgePath);
+        self::assertIsString($customized);
+        $customized = str_replace('data-slot="badge"', 'data-slot="badge" data-owned="si"', $customized);
+        file_put_contents($badgePath, $customized);
+
+        $ownedUi = HotUI::instance(['view_path' => $owned]);
+        $html = $ownedUi->render('layouts/guest', ['content' => $ownedUi->badge([], 'yo')]);
+
+        self::assertStringContainsString('data-slot="badge"', $html);
+        self::assertStringContainsString('data-owned="si"', $html, 'Host copy must take over rendering when view_path is switched');
+    }
+
+    public function testPublishViewsRejectsUnknownGroup(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        HotUI::publishViews($this->tmp.'/x', ['fonts']);
+    }
+
     /** @return list<string> */
     private function allFiles(string $dir): array
     {
