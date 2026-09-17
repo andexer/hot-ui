@@ -43,10 +43,10 @@
     },
     "scripts": {
         "test": "phpunit --colors=always",
-        "lint": "@php bin/lint.php",
-        "hooks": "@php bin/install-hooks.php",
-        "smoke": "@php bin/smoke.php",
-        "examples": "@php bin/examples.php"
+        "lint": "@php bin/hot-ui lint",
+        "hooks": "@php bin/hot-ui hooks:install",
+        "smoke": "@php bin/hot-ui smoke",
+        "examples": "@php bin/hot-ui examples"
     },
     "config": {
         "sort-packages": true,
@@ -61,7 +61,6 @@
             "/demo",
             "/docs",
             "/tests",
-            "/bin",
             "/.githooks",
             "/.agents",
             "/.claude",

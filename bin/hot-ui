@@ -1,0 +1,814 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Hot-UI CLI Tool - Unified development tooling for Hot-UI package
+ * 
+ * This tool consolidates all development scripts into a single CLI interface:
+ * - lint: PHP best-practices enforcement
+ * - smoke: Component smoke testing
+ * - examples: Example page validation
+ * - hooks: Git hooks management
+ * 
+ * Usage:
+ *   php bin/hot-ui <command> [options]
+ *   php bin/hot-ui --help
+ * 
+ * @version 0.16.0
+ */
+
+namespace HotUi\Cli;
+
+use Components\Ui;
+
+require dirname(__DIR__).'/vendor/autoload.php';
+
+const VERSION = '0.16.0';
+
+/**
+ * Main CLI dispatcher
+ */
+function main(): int
+{
+    $argv = $_SERVER['argv'];
+    $command = $argv[1] ?? 'help';
+    $args = array_slice($argv, 2);
+
+    return match ($command) {
+        'lint' => commandLint($args),
+        'smoke' => commandSmoke($args),
+        'examples' => commandExamples($args),
+        'hooks:install', 'hooks' => commandHooksInstall($args),
+        'hooks:uninstall' => commandHooksUninstall($args),
+        'hooks:status' => commandHooksStatus($args),
+        'help', '--help', '-h' => commandHelp(),
+        'version', '--version', '-v' => commandVersion(),
+        default => commandHelp($command),
+    };
+}
+
+/**
+ * Lint command - Enforces PHP best-practices
+ */
+function commandLint(array $args): int
+{
+    $targets = $args === [] ? LINT_TARGETS : $args;
+    
+    echo "Running linter on: ".implode(', ', $targets)."\n";
+    
+    $violations = [];
+    foreach (lintFiles($targets) as $file) {
+        $source = file_get_contents($file);
+        if ($source === false) {
+            continue;
+        }
+        
+        $packageSource = lintIsPackageSource($file);
+        $fileViolations = lintSource($source, $packageSource);
+        
+        foreach ($fileViolations as $violation) {
+            $violations[] = "$file:$violation";
+        }
+    }
+    
+    if ($violations === []) {
+        echo "✓ No violations found\n";
+        return 0;
+    }
+    
+    echo "✗ Found ".count($violations)." violation(s):\n";
+    foreach ($violations as $violation) {
+        echo "  $violation\n";
+    }
+    
+    return 1;
+}
+
+/**
+ * Smoke command - Component smoke testing
+ */
+function commandSmoke(array $args): int
+{
+    $filter = $args[0] ?? null;
+    
+    echo "Running smoke tests".($filter ? " (filter: $filter)" : '')."\n";
+    
+    $ui = Ui::new(dirname(__DIR__).'/views');
+    $names = $ui->componentNames();
+    sort($names);
+    
+    $PAYLOADS = [];
+    
+    $passed = 0;
+    $failed = [];
+    
+    foreach ($names as $name) {
+        if ($filter !== null && ! str_contains($name, $filter)) {
+            continue;
+        }
+        
+        try {
+            $ui->renderComponent($name, [$PAYLOADS[$name] ?? []]);
+            ++$passed;
+        } catch (Throwable $e) {
+            $failed[$name] = $e->getMessage();
+        }
+    }
+    
+    $total = $passed + count($failed);
+    echo "\nSmoke: $passed/$total rendered (".count($failed)." failed)\n";
+    
+    foreach ($failed as $name => $message) {
+        echo "  FAIL $name: ".strtok($message, "\n")."\n";
+    }
+    
+    return $failed === [] ? 0 : 1;
+}
+
+/**
+ * Examples command - Example page validation
+ */
+function commandExamples(array $args): int
+{
+    echo "Running example validation\n";
+    
+    $ui = Ui::new();
+    
+    $examples = [
+        'examples/login' => ['layouts/guest', ['Acceder', 'Bienvenido de nuevo']],
+        'examples/dashboard' => ['layouts/app', ['Dashboard', 'Panel general']],
+        'examples/blog' => ['layouts/app', ['Blog', 'El blog de Hot-UI']],
+    ];
+    
+    $wrap = static function (Ui $ui, string $layout, string $body, string $title, array $needles, array $nav): string {
+        return $ui->render($layout, [
+            'title' => $title,
+            'meta' => $ui->render('partials/meta', ['title' => $title, 'description' => 'Ejemplo Hot-UI.']),
+            'nav' => $nav,
+            'content' => $body,
+        ]);
+    };
+    
+    $failed = 0;
+    foreach ($examples as $template => [$layout, $needles]) {
+        [$titleNeedle, $bodyNeedle] = $needles;
+        
+        try {
+            $html = $wrap(
+                $ui,
+                $layout,
+                $ui->view($template),
+                $titleNeedle,
+                $needles,
+                ['Inicio' => '/', 'Login' => '/examples/login'],
+            );
+        } catch (Throwable $e) {
+            echo "FAIL $template: {$e->getMessage()}\n";
+            ++$failed;
+            continue;
+        }
+        
+        $checks = [
+            "título [$titleNeedle]" => str_contains($html, $titleNeedle),
+            "contenido [$bodyNeedle]" => str_contains($html, $bodyNeedle),
+            'doctype' => str_starts_with(ltrim($html), '<!DOCTYPE html>'),
+            'css incluido' => str_contains($html, '/css/hot-ui.min.css'),
+            'js incluido' => str_contains($html, '/js/app.js'),
+            'sin fugas de código' => preg_match('/<\?php|extract\(\$__ctx/', $html) !== 1,
+        ];
+        
+        $errors = array_filter($checks, static fn (bool $ok): bool => ! $ok);
+        if ($errors !== []) {
+            echo "FAIL $template: ".implode(', ', array_keys($errors))."\n";
+            ++$failed;
+            continue;
+        }
+        
+        echo "OK   $template ".strlen($html)." bytes\n";
+    }
+    
+    return $failed === 0 ? 0 : 1;
+}
+
+/**
+ * Hooks install command
+ */
+function commandHooksInstall(array $args): int
+{
+    $force = in_array('--force', $args, true);
+    
+    echo "Installing git hooks...\n";
+    
+    $HOOKS_PATH = '.githooks';
+    $HOOK_FILE = '.githooks/pre-commit';
+    
+    $repository = git(['rev-parse', '--show-toplevel']);
+    if ($repository['code'] !== 0) {
+        echo "ERROR: not a git checkout\n";
+        return 1;
+    }
+    
+    if (! is_file($HOOK_FILE)) {
+        echo "ERROR: ".$HOOK_FILE." is missing\n";
+        return 1;
+    }
+    
+    if (! is_executable($HOOK_FILE) && ! chmod($HOOK_FILE, 0o755) && ! is_executable($HOOK_FILE)) {
+        echo "ERROR: cannot make ".$HOOK_FILE." executable\n";
+        return 1;
+    }
+    
+    $current = hooksPath();
+    if ($current === $HOOKS_PATH && ! $force) {
+        echo "Hooks already installed\n";
+        return 0;
+    }
+    
+    $result = git(['config', '--local', 'core.hooksPath', $HOOKS_PATH]);
+    if ($result['code'] !== 0) {
+        echo "ERROR: cannot set core.hooksPath: {$result['output']}\n";
+        return 1;
+    }
+    
+    echo "✓ Git hooks installed\n";
+    echo "  core.hooksPath = ".$HOOKS_PATH."\n";
+    echo "  pre-commit runs `php bin/hot-ui lint`\n";
+    
+    return 0;
+}
+
+/**
+ * Hooks uninstall command
+ */
+function commandHooksUninstall(array $args): int
+{
+    echo "Uninstalling git hooks...\n";
+    
+    $current = hooksPath();
+    if ($current === null) {
+        echo "Hooks not installed\n";
+        return 0;
+    }
+    
+    $result = git(['config', '--local', '--unset', 'core.hooksPath']);
+    if ($result['code'] !== 0) {
+        echo "ERROR: cannot unset core.hooksPath: {$result['output']}\n";
+        return 1;
+    }
+    
+    echo "✓ Git hooks uninstalled\n";
+    return 0;
+}
+
+/**
+ * Hooks status command
+ */
+function commandHooksStatus(array $args): int
+{
+    $current = hooksPath();
+    
+    echo "Git hooks status:\n";
+    echo "  core.hooksPath: ".($current ?? '(unset)')."\n";
+    
+    if ($current === '.githooks') {
+        $hookFile = '.githooks/pre-commit';
+        echo "  pre-commit hook: ".(is_file($hookFile) ? 'present' : 'MISSING');
+        echo ' ('.(is_executable($hookFile) ? 'executable' : 'not executable').")\n";
+    }
+    
+    return $current === '.githooks' ? 0 : 1;
+}
+
+/**
+ * Help command
+ */
+function commandHelp(?string $invalidCommand = null): int
+{
+    if ($invalidCommand !== null) {
+        echo "Unknown command: $invalidCommand\n\n";
+    }
+    
+    echo "Hot-UI CLI Tool v".VERSION."\n";
+    echo "Unified development tooling for Hot-UI package\n\n";
+    echo "Usage:\n";
+    echo "  php bin/hot-ui <command> [options]\n\n";
+    echo "Commands:\n";
+    echo "  lint [paths]          Enforce PHP best-practices (default: src, tests, bin)\n";
+    echo "  smoke [filter]        Component smoke testing\n";
+    echo "  examples              Example page validation\n";
+    echo "  hooks:install         Install git hooks\n";
+    echo "  hooks:uninstall       Uninstall git hooks\n";
+    echo "  hooks:status          Show git hooks status\n";
+    echo "  help                  Show this help message\n";
+    echo "  version               Show version information\n\n";
+    echo "Examples:\n";
+    echo "  php bin/hot-ui lint\n";
+    echo "  php bin/hot-ui smoke uiCard\n";
+    echo "  php bin/hot-ui hooks:install\n";
+    
+    return $invalidCommand === null ? 0 : 1;
+}
+
+/**
+ * Version command
+ */
+function commandVersion(): int
+{
+    echo "Hot-UI CLI Tool v".VERSION."\n";
+    echo "Hot-UI Package v".\Components\HotUI::VERSION."\n";
+    return 0;
+}
+
+// ============================================================================
+// LINTING FUNCTIONS (extracted from lint.php)
+// ============================================================================
+
+define('LINT_TARGETS', ['src', 'tests', 'bin']);
+define('LINT_TYPELESS_MAGIC', ['__construct', '__destruct']);
+define('LINT_MARKER_SUFFIX', 'Exception');
+define('LINT_GENERIC_EXCEPTIONS', [
+    'Exception', 'RuntimeException', 'LogicException', 'InvalidArgumentException',
+    'DomainException', 'LengthException', 'OutOfRangeException', 'RangeException',
+    'UnexpectedValueException', 'BadFunctionCallException', 'BadMethodCallException',
+    'OverflowException', 'UnderflowException', 'OutOfBoundsException',
+]);
+
+function lintFiles(array $targets): array
+{
+    $files = [];
+    foreach ($targets as $target) {
+        if (is_file($target)) {
+            $files[] = strtr($target, '\\', '/');
+            continue;
+        }
+        
+        if (! is_dir($target)) {
+            continue;
+        }
+        
+        $entries = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($target, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::LEAVES_ONLY,
+            RecursiveIteratorIterator::CATCH_GET_CHILD,
+        );
+        foreach ($entries as $entry) {
+            if ($entry->isFile() && $entry->getExtension() === 'php') {
+                $files[] = strtr($entry->getPathname(), '\\', '/');
+            }
+        }
+    }
+    
+    sort($files);
+    return $files;
+}
+
+function lintTokens(string $source): array
+{
+    $line = 1;
+    $tokens = [];
+    foreach (token_get_all($source) as $token) {
+        if (is_array($token)) {
+            [$id, $text, $start] = $token;
+            $tokens[] = ['id' => $id, 'text' => $text, 'line' => $start];
+            $line = $start + substr_count($text, "\n");
+            continue;
+        }
+        
+        $tokens[] = ['id' => $token, 'text' => $token, 'line' => $line];
+        $line += substr_count($token, "\n");
+    }
+    
+    return $tokens;
+}
+
+function lintSource(string $source, bool $packageSource): array
+{
+    $tokens = lintTokens($source);
+    $generic = lintGenericExceptions($tokens, $packageSource);
+    
+    return [
+        ...lintSuppressions($tokens),
+        ...lintDeclarations($tokens),
+        ...lintReturnTypes($tokens),
+        ...lintParameterTypes($tokens),
+        ...$generic,
+        ...($packageSource ? lintExceptionFamilies($tokens) : []),
+    ];
+}
+
+function lintIsPackageSource(string $file): bool
+{
+    $normalized = strtr($file, '\\', '/');
+    return str_starts_with($normalized, 'src/') || str_contains($normalized, '/src/');
+}
+
+function lintSuppressions(array $tokens): array
+{
+    $violations = [];
+    foreach ($tokens as $token) {
+        if ($token['text'] === '@') {
+            $violations[] = sprintf('%d: the @ error-suppression operator is banned (rule 5.3)', $token['line']);
+        }
+    }
+    return $violations;
+}
+
+function lintDeclarations(array $tokens): array
+{
+    foreach ($tokens as $index => $token) {
+        if (in_array($token['id'], [T_OPEN_TAG, T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+            continue;
+        }
+        
+        if ($token['id'] !== T_DECLARE) {
+            break;
+        }
+        
+        $statement = '';
+        for ($i = $index; isset($tokens[$i]) && $tokens[$i]['text'] !== ';'; ++$i) {
+            $statement .= $tokens[$i]['text'];
+        }
+        
+        if (preg_match('/strict_types\s*=\s*1/', $statement) === 1) {
+            return [];
+        }
+        
+        break;
+    }
+    
+    return ['1: missing declare(strict_types=1) (rule 1.1)'];
+}
+
+function lintReturnTypes(array $tokens): array
+{
+    $violations = [];
+    foreach ($tokens as $index => $token) {
+        if ($token['id'] !== T_FUNCTION && $token['id'] !== T_FN) {
+            continue;
+        }
+        
+        $name = lintFunctionName($tokens, $index);
+        if ($name !== null && in_array($name, ['__construct', '__destruct'], true)) {
+            continue;
+        }
+        
+        if (lintHasReturnType($tokens, $index)) {
+            continue;
+        }
+        
+        $violations[] = sprintf(
+            '%d: %s declares no return type (rule 1.2)',
+            $token['line'],
+            $name === null ? 'the closure' : $name.'()',
+        );
+    }
+    
+    return $violations;
+}
+
+function lintParameterTypes(array $tokens): array
+{
+    $violations = [];
+    foreach ($tokens as $index => $token) {
+        if ($token['id'] !== T_FUNCTION && $token['id'] !== T_FN) {
+            continue;
+        }
+        
+        $open = lintFindToken($tokens, $index, '(');
+        $close = $open === null ? null : lintClosingParen($tokens, $open);
+        if ($open === null || $close === null) {
+            continue;
+        }
+        
+        foreach (lintParameterSegments($tokens, $open, $close) as $segment) {
+            $variable = lintParameterVariable($tokens, $segment);
+            if ($variable === null || lintSegmentHasType($tokens, $segment, $variable)) {
+                continue;
+            }
+            
+            $violations[] = sprintf(
+                '%d: parameter %s declares no type (rule 1.1)',
+                $tokens[$variable]['line'],
+                $tokens[$variable]['text'],
+            );
+        }
+    }
+    
+    return $violations;
+}
+
+function lintGenericExceptions(array $tokens, bool $packageSource): array
+{
+    $violations = [];
+    foreach ($tokens as $index => $token) {
+        if ($token['id'] !== T_NEW) {
+            continue;
+        }
+        
+        $class = lintNextMeaningful($tokens, $index + 1);
+        if ($class === null) {
+            continue;
+        }
+        
+        $name = lintGenericExceptionName($tokens[$class]['text']);
+        if ($name === null) {
+            continue;
+        }
+        
+        $thrown = lintPreviousMeaningful($tokens, $index - 1);
+        if ($thrown !== null && $tokens[$thrown]['id'] === T_THROW) {
+            $violations[] = sprintf(
+                '%d: throwing \\%s is banned; throw a domain exception (rule 5.1)',
+                $token['line'],
+                $name,
+            );
+            continue;
+        }
+        
+        if ($packageSource) {
+            $violations[] = sprintf(
+                '%d: constructing \\%s is banned; use a domain exception (rule 5.1)',
+                $token['line'],
+                $name,
+            );
+        }
+    }
+    
+    return $violations;
+}
+
+function lintExceptionFamilies(array $tokens): array
+{
+    $violations = [];
+    foreach ($tokens as $index => $token) {
+        if ($token['id'] !== T_CLASS) {
+            continue;
+        }
+        
+        $before = lintPreviousMeaningful($tokens, $index - 1);
+        if ($before !== null && $tokens[$before]['id'] === T_NEW) {
+            continue;
+        }
+        
+        $name = lintNextMeaningful($tokens, $index + 1);
+        if ($name === null || $tokens[$name]['id'] !== T_STRING) {
+            continue;
+        }
+        
+        $header = lintClassHeader($tokens, $index);
+        if ($header['base'] === null || lintGenericExceptionName($header['base']) === null) {
+            continue;
+        }
+        if ($header['markers'] !== []) {
+            continue;
+        }
+        
+        $violations[] = sprintf(
+            '%d: class %s extends \\%s without implementing a family marker; make it part of an exception family (rule 5.1)',
+            $token['line'],
+            $tokens[$name]['text'],
+            ltrim($header['base'], '\\'),
+        );
+    }
+    
+    return $violations;
+}
+
+// Helper functions for linting
+function lintFunctionName(array $tokens, int $index): ?string
+{
+    for ($i = $index + 1; isset($tokens[$i]); ++$i) {
+        if ($tokens[$i]['id'] === T_STRING) {
+            return $tokens[$i]['text'];
+        }
+        if ($tokens[$i]['text'] === '(') {
+            break;
+        }
+    }
+    return null;
+}
+
+function lintHasReturnType(array $tokens, int $index): bool
+{
+    for ($i = $index; isset($tokens[$i]); ++$i) {
+        if ($tokens[$i]['text'] === '{') {
+            return false;
+        }
+        if ($tokens[$i]['id'] === T_STRING && in_array($tokens[$i]['text'], ['void', 'never', 'null'], true)) {
+            return true;
+        }
+        if (in_array($tokens[$i]['id'], [T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED], true)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function lintFindToken(array $tokens, int $start, string $text): ?int
+{
+    for ($i = $start; isset($tokens[$i]); ++$i) {
+        if ($tokens[$i]['text'] === $text) {
+            return $i;
+        }
+    }
+    return null;
+}
+
+function lintClosingParen(array $tokens, int $open): ?int
+{
+    $depth = 0;
+    for ($i = $open; isset($tokens[$i]); ++$i) {
+        if ($tokens[$i]['text'] === '(') {
+            ++$depth;
+        } elseif ($tokens[$i]['text'] === ')') {
+            if ($depth === 0) {
+                return $i;
+            }
+            --$depth;
+        }
+    }
+    return null;
+}
+
+function lintParameterSegments(array $tokens, int $open, int $close): array
+{
+    $segments = [];
+    $segment = [];
+    $depth = 0;
+    
+    for ($i = $open + 1; $i < $close; ++$i) {
+        $id = $tokens[$i]['id'];
+        $text = $tokens[$i]['text'];
+        
+        if (in_array($id, [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+            continue;
+        }
+        
+        if ($text === '(' || $text === '[' || $text === '{') {
+            ++$depth;
+        } elseif ($text === ')' || $text === ']' || $text === '}') {
+            --$depth;
+        } elseif ($text === ',' && $depth === 0) {
+            if ($segment !== []) {
+                $segments[] = $segment;
+                $segment = [];
+            }
+            continue;
+        }
+        
+        $segment[] = $i;
+    }
+    
+    if ($segment !== []) {
+        $segments[] = $segment;
+    }
+    
+    return $segments;
+}
+
+function lintParameterVariable(array $tokens, array $segment): ?int
+{
+    foreach ($segment as $index) {
+        if ($tokens[$index]['id'] === T_VARIABLE) {
+            return $index;
+        }
+    }
+    return null;
+}
+
+function lintSegmentHasType(array $tokens, array $segment, int $variable): bool
+{
+    $count = count($segment);
+    $position = 0;
+    
+    while ($position < $count) {
+        $index = $segment[$position];
+        if ($index >= $variable) {
+            return false;
+        }
+        
+        $id = $tokens[$index]['id'];
+        $text = $tokens[$index]['text'];
+        
+        if (in_array($id, [T_PUBLIC, T_PROTECTED, T_PRIVATE, T_READONLY, T_VAR, T_FINAL, T_STATIC], true)) {
+            ++$position;
+            continue;
+        }
+        
+        if ($text === '&' || $text === '...' || $text === '(' || $text === ')') {
+            ++$position;
+            continue;
+        }
+        
+        return true;
+    }
+    
+    return false;
+}
+
+function lintNextMeaningful(array $tokens, int $index): ?int
+{
+    for ($i = $index; isset($tokens[$i]); ++$i) {
+        if (! in_array($tokens[$i]['id'], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+            return $i;
+        }
+    }
+    return null;
+}
+
+function lintPreviousMeaningful(array $tokens, int $index): ?int
+{
+    for ($i = $index; $i >= 0; --$i) {
+        if (! in_array($tokens[$i]['id'], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+            return $i;
+        }
+    }
+    return null;
+}
+
+function lintGenericExceptionName(string $text): ?string
+{
+    $bare = str_starts_with($text, '\\') ? substr($text, 1) : $text;
+    if (str_contains($bare, '\\')) {
+        return null;
+    }
+    
+    return in_array($bare, ['Exception', 'RuntimeException', 'LogicException', 'InvalidArgumentException',
+    'DomainException', 'LengthException', 'OutOfRangeException', 'RangeException',
+    'UnexpectedValueException', 'BadFunctionCallException', 'BadMethodCallException',
+    'OverflowException', 'UnderflowException', 'OutOfBoundsException'], true) ? $bare : null;
+}
+
+function lintClassHeader(array $tokens, int $index): array
+{
+    $base = null;
+    $markers = [];
+    $implementing = false;
+    
+    for ($i = $index + 1; isset($tokens[$i]); ++$i) {
+        $id = $tokens[$i]['id'];
+        $text = $tokens[$i]['text'];
+        if ($text === '{' || $text === ';') {
+            break;
+        }
+        
+        if ($id === T_EXTENDS) {
+            $target = lintNextMeaningful($tokens, $i + 1);
+            $base = $target === null ? null : $tokens[$target]['text'];
+            continue;
+        }
+        
+        if ($id === T_IMPLEMENTS) {
+            $implementing = true;
+            continue;
+        }
+        
+        if (! $implementing || ! in_array($id, [T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED], true)) {
+            continue;
+        }
+        
+        if (str_ends_with($text, 'Exception')) {
+            $markers[] = $text;
+        }
+    }
+    
+    return ['base' => $base, 'markers' => $markers];
+}
+
+// ============================================================================
+// GIT HOOKS FUNCTIONS
+// ============================================================================
+
+function git(array $command): array
+{
+    $pipes = [];
+    $process = proc_open(
+        ['git', ...$command],
+        [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+        $pipes,
+        dirname(__DIR__),
+    );
+    if (! is_resource($process)) {
+        return ['code' => 1, 'output' => 'cannot start git'];
+    }
+    
+    $output = (string) stream_get_contents($pipes[1]).(string) stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    
+    return ['code' => proc_close($process), 'output' => trim($output)];
+}
+
+function hooksPath(): ?string
+{
+    $result = git(['config', '--local', '--get', 'core.hooksPath']);
+    return $result['code'] === 0 && $result['output'] !== '' ? $result['output'] : null;
+}
+
+// ============================================================================
+// MAIN ENTRY POINT
+// ============================================================================
+
+exit(main());
