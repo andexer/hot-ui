@@ -39,16 +39,19 @@ final class ComponentGenerator
     private readonly ComponentPaths $paths;
 
     /**
-     * @param string      $viewsRoot    Root of the app views folder (Hotfire prefix lives under it).
-     * @param string      $namespace    Root namespace for generated classes (default "App\Components").
-     * @param string      $templatesDir Folder with the *.stub scaffolds consumed by this generator.
-     * @param string      $emoji        Visual indicator prefix on each component folder (default "🔥").
+     * @param string      $viewsRoot      Root of the app views folder (Hotfire prefix lives under it).
+     * @param string      $namespace      Root namespace for generated classes (default "App\Components").
+     * @param string      $templatesDir   Folder with the *.stub scaffolds consumed by this generator.
+     * @param string      $emoji          Visual indicator prefix on each component folder (default "🔥").
+     * @param string|null $customStubsDir Optional directory with user-published stubs (via hot-ui:stubs).
+     *                                    When set, stubs found there take precedence over $templatesDir.
      */
     public function __construct(
         private readonly string $viewsRoot,
         private readonly string $namespace = 'App\\Components',
         private readonly string $templatesDir = __DIR__.'/templates',
         string $emoji = '🔥',
+        private readonly ?string $customStubsDir = null,
     ) {
         if (! self::isValidNamespace($namespace)) {
             throw new InvalidNamespaceException($namespace);
@@ -284,12 +287,24 @@ final class ComponentGenerator
      * plain keys ("namespace"); the {{ }} braces are added here, so a
      * placeholder always looks like {{namespace}} in the stub files.
      *
+     * Resolution order:
+     *   1. $customStubsDir (user-published via `hot-ui:stubs`) when available.
+     *   2. $templatesDir   (built-in package stubs).
+     *
      * Unknown placeholders are left untouched so partial stubs stay valid;
      * overwriting one of the shipped stubs is how you customize the scaffold.
      */
     private function stub(string $file, array $tokens): string
     {
-        $path = rtrim($this->templatesDir, '/\\').'/'.$file;
+        // Prefer the user-published stub directory if a matching file exists.
+        $customPath = $this->customStubsDir !== null
+            ? rtrim($this->customStubsDir, '/\\').'/'.$file
+            : null;
+
+        $path = ($customPath !== null && is_readable($customPath))
+            ? $customPath
+            : rtrim($this->templatesDir, '/\\').'/'.$file;
+
         if (! is_readable($path)) {
             throw new StubTemplateNotFoundException($file);
         }

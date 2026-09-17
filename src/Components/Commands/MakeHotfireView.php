@@ -112,11 +112,16 @@ final class MakeHotfireView extends BaseCommand
 
     private function generator(array $params): ComponentGenerator
     {
+        $customStubsDir = defined('APPPATH')
+            ? rtrim(APPPATH, '/\\') . '/Components/stubs/hot-ui'
+            : null;
+
         return new ComponentGenerator(
             $this->viewsRoot($params),
             'App\\Components',
             __DIR__.'/../Hotfire/templates',
             $this->option($params, 'emoji') ?? '🔥',
+            ($customStubsDir !== null && is_dir($customStubsDir)) ? $customStubsDir : null,
         );
     }
 }

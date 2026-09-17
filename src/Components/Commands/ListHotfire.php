@@ -10,15 +10,18 @@ use Components\Hotfire\ComponentPaths;
 use Components\Hotfire\Exception\HotfireException;
 
 /**
- * php spark list:hotfire [options]
+ * php spark hot-ui:list [options]
  *
  * Discovers every Hotfire component under the configured view prefix — the
  * folders marked with the 🔥 indicator (or the --emoji override) — and reports
  * the component name, its class, template and sidecars.
  *
- *   php spark list:hotfire
- *   php spark list:hotfire --simple
- *   php spark list:hotfire --views="/abs/path" --emoji="⚡"
+ *   php spark hot-ui:list
+ *   php spark hot-ui:list --simple
+ *   php spark hot-ui:list --views="/abs/path" --emoji="⚡"
+ *
+ * The alias `list:hotfire` is kept for backwards compatibility and will be
+ * removed in a future major version.
  *
  * The command is auto-discovered by spark from this package (any class in
  * vendor/**\Commands\|Components\Commands extending BaseCommand).
@@ -35,7 +38,14 @@ final class ListHotfire extends BaseCommand
     /**
      * @var string
      */
-    protected $name = 'list:hotfire';
+    protected $name = 'hot-ui:list';
+
+    /**
+     * Backwards-compatible alias. Emits a deprecation notice when used.
+     *
+     * @var list<string>
+     */
+    protected $aliases = ['list:hotfire'];
 
     /**
      * @var string
@@ -65,9 +75,16 @@ final class ListHotfire extends BaseCommand
      */
     public function run(array $params): int
     {
+        // Emit a deprecation notice when the old alias is used directly.
+        if (($this->name ?? '') !== 'hot-ui:list') {
+            CLI::write('[DEPRECATED] `list:hotfire` has been renamed to `hot-ui:list`. The alias will be removed in a future major version.', 'yellow');
+            CLI::newLine();
+        }
+
         try {
             $paths = new ComponentPaths($this->viewsRoot($params), $this->option($params, 'emoji') ?? '🔥');
             $components = $paths->discover();
+
         } catch (HotfireException $exception) {
             CLI::error('Hotfire: '.$exception->getMessage());
             CLI::newLine();

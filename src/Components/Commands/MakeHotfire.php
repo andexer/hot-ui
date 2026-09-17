@@ -170,12 +170,16 @@ final class MakeHotfire extends BaseCommand
     private function generator(array $params): ComponentGenerator
     {
         $namespace = $this->option($params, 'namespace') ?? 'App\\Components';
+        $customStubsDir = defined('APPPATH')
+            ? rtrim(APPPATH, '/\\') . '/Components/stubs/hot-ui'
+            : null;
 
         return new ComponentGenerator(
             $this->viewsRoot($params),
             trim($namespace, '\\'),
             __DIR__.'/../Hotfire/templates',
             $this->option($params, 'emoji') ?? '🔥',
+            ($customStubsDir !== null && is_dir($customStubsDir)) ? $customStubsDir : null,
         );
     }
 }

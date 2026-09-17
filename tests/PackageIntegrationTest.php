@@ -64,7 +64,7 @@ final class PackageIntegrationTest extends TestCase
 
     public function testPackageVersionMatchesExpected(): void
     {
-        self::assertSame('0.14.0', HotUI::VERSION);
+        self::assertSame('0.16.0', HotUI::VERSION);
     }
 
     public function testSharedAndInstanceRenderTheSamePage(): void

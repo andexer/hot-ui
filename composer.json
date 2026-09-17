@@ -3,6 +3,7 @@
     "description": "Hot-UI — zero-dependency shadcn-style UI component library for plain PHP 8.2+ with typed Alpine.js islands. No framework, no template engine: works in CodeIgniter 4, League Plates, Blade or any PHP app.",
     "type": "composer-plugin",
     "license": "MIT",
+    "version": "0.16.0",
     "authors": [
         {
             "name": "Arvelo Falcon",
