@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Components\Hotfire;
 
+use Components\Hotfire\Exception\InvalidComponentPropertyException;
+use Components\Hotfire\Exception\InvalidNamespaceException;
+use Components\Hotfire\Exception\StubTemplateNotFoundException;
+
 /**
  * Scaffolds Hotfire reactive components for CodeIgniter 4 apps.
  *
@@ -44,10 +48,32 @@ final class ComponentGenerator
         private readonly string $templatesDir = __DIR__.'/templates',
         string $emoji = '🔥',
     ) {
-        if ($emoji === '' || preg_match('#[/\\\\\.]#', $emoji)) {
-            throw new \InvalidArgumentException('Hotfire emoji must be a non-empty directory-safe marker.');
+        if (! self::isValidNamespace($namespace)) {
+            throw new InvalidNamespaceException($namespace);
         }
+
+        // ComponentPaths validates the emoji, so both share one rule.
         $this->paths = new ComponentPaths(null, $emoji);
+    }
+
+    /**
+     * True when $namespace is a backslash-joined list of PHP identifiers
+     * (App\Components, Domain\Posts): what a generated class can declare.
+     */
+    private static function isValidNamespace(string $namespace): bool
+    {
+        $namespace = trim($namespace, '\\');
+        if ($namespace === '') {
+            return false;
+        }
+
+        foreach (explode('\\', $namespace) as $part) {
+            if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $part) !== 1) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -79,7 +105,7 @@ final class ComponentGenerator
     {
         $segments = $this->paths->segments($name);
 
-        return $this->paths->pascal(array_pop($segments));
+        return ComponentPaths::pascal(array_pop($segments));
     }
 
     /**
@@ -91,7 +117,7 @@ final class ComponentGenerator
         $segments = $this->paths->segments($name);
         array_pop($segments);
 
-        $sub = array_map(fn (string $segment): string => $this->paths->pascal($segment), $segments);
+        $sub = array_map(static fn (string $segment): string => ComponentPaths::pascal($segment), $segments);
 
         $ns = trim($this->namespace, '\\');
         if ($sub !== []) {
@@ -104,9 +130,7 @@ final class ComponentGenerator
     /** Absolute path of the component class, collocated in its own folder. */
     public function classPath(string $name): string
     {
-        $paths = $this->paths;
-
-        return rtrim($this->viewsRoot, '/\\').'/'.$paths->folder($name).'/'.$paths->leafKebab($name).'.php';
+        return rtrim($this->viewsRoot, '/\\').'/'.$this->paths->classRelative($name);
     }
 
     /**
@@ -143,10 +167,7 @@ final class ComponentGenerator
                 continue;
             }
             if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $prop)) {
-                throw new \InvalidArgumentException(sprintf(
-                    'Invalid property name [%s]; use plain identifiers (title, content).',
-                    $prop,
-                ));
+                throw new InvalidComponentPropertyException($prop);
             }
             $out[] = $prop;
         }
@@ -267,9 +288,13 @@ final class ComponentGenerator
     private function stub(string $file, array $tokens): string
     {
         $path = rtrim($this->templatesDir, '/\\').'/'.$file;
-        $content = @file_get_contents($path);
+        if (! is_readable($path)) {
+            throw new StubTemplateNotFoundException($file);
+        }
+
+        $content = file_get_contents($path);
         if ($content === false) {
-            throw new \RuntimeException(sprintf('Hotfire stub template not found: %s', $file));
+            throw new StubTemplateNotFoundException($file);
         }
 
         $map = [];

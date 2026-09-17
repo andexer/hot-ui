@@ -7,6 +7,9 @@ namespace Components\Commands;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 use Components\Hotfire\ComponentGenerator;
+use Components\Hotfire\Exception\ComponentWriteException;
+use Components\Hotfire\Exception\HotfireException;
+use Components\Support\Filesystem;
 
 /**
  * php spark make:hotfire-view <name> [options]
@@ -17,7 +20,7 @@ use Components\Hotfire\ComponentGenerator;
  *
  *   php spark make:hotfire-view post.create --props="title,content"
  */
-class MakeHotfireView extends BaseCommand
+final class MakeHotfireView extends BaseCommand
 {
     use CliOptions;
 
@@ -62,9 +65,9 @@ class MakeHotfireView extends BaseCommand
     /**
      * @param array<int|string, string|null> $params
      */
-    public function run(array $params)
+    public function run(array $params): int
     {
-        $name = (string) ($params[0] ?? ($prop = $this->option($params, 'name')) ?? '');
+        $name = (string) ($params[0] ?? ($this->option($params, 'name') ?? ''));
         if ($name === '') {
             CLI::error('Hotfire: missing component name. Usage: '.$this->usage);
             CLI::newLine();
@@ -78,9 +81,8 @@ class MakeHotfireView extends BaseCommand
             $props = $this->has($params, 'mfc') ? ['title', 'content'] : $generator->props($this->option($params, 'props') ?? '');
 
             $path = $generator->viewPath($name);
-            $directory = dirname($path);
-            if (! is_dir($directory) && ! @mkdir($directory, 0o775, true) && ! is_dir($directory)) {
-                throw new \InvalidArgumentException('Cannot create directory '.$directory);
+            if (! Filesystem::ensureDirectory(dirname($path))) {
+                throw ComponentWriteException::uncreatableDirectory(dirname($path));
             }
 
             if (! $this->has($params, 'force') && is_file($path)) {
@@ -92,13 +94,13 @@ class MakeHotfireView extends BaseCommand
             }
 
             if (file_put_contents($path, $generator->viewContent($name, $props), LOCK_EX) === false) {
-                throw new \InvalidArgumentException('Cannot write '.$path);
+                throw ComponentWriteException::unwritableFile($path);
             }
 
             CLI::write('Created: ', 'green');
             CLI::write('  '.clean_path($path));
             CLI::newLine();
-        } catch (\InvalidArgumentException $exception) {
+        } catch (HotfireException $exception) {
             CLI::error('Hotfire: '.$exception->getMessage());
             CLI::newLine();
 
@@ -110,14 +112,11 @@ class MakeHotfireView extends BaseCommand
 
     private function generator(array $params): ComponentGenerator
     {
-        $views = $this->option($params, 'views');
-        if ($views === null) {
-            if (! defined('APPPATH')) {
-                throw new \InvalidArgumentException('Cannot resolve APPPATH; run from a CodeIgniter 4 application.');
-            }
-            $views = rtrim((string) APPPATH, '/\\').'/Views';
-        }
-
-        return new ComponentGenerator($views, 'App\\Components', __DIR__.'/../Hotfire/templates', $this->option($params, 'emoji') ?? '🔥');
+        return new ComponentGenerator(
+            $this->viewsRoot($params),
+            'App\\Components',
+            __DIR__.'/../Hotfire/templates',
+            $this->option($params, 'emoji') ?? '🔥',
+        );
     }
 }

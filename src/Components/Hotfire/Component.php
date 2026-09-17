@@ -61,8 +61,7 @@ abstract class Component
             return $this->view;
         }
 
-        $short = strtolower(preg_replace('/(?<!^)[A-Z]/', '-$0', (new \ReflectionClass($this))->getShortName()) ?? '');
-        $short = rtrim((string) $short, '-');
+        $short = ComponentPaths::kebab((new \ReflectionClass($this))->getShortName());
         $prefix = trim(Config::shared()->viewPrefix(), '/');
 
         return $prefix === '' ? $short : $prefix.'/'.$short;

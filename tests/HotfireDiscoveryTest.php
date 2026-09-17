@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Components\Tests;
 
+use Components\Hotfire\ComponentGenerator;
 use Components\Hotfire\ComponentPaths;
 use Components\Hotfire\Config;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -39,85 +41,141 @@ final class HotfireDiscoveryTest extends TestCase
         rmdir($this->tmp);
     }
 
-    public function testDiscoversNestedComponentsWithClassViewAndSidecars(): void
+    public function testDiscoversNestedComponentWithClassTemplateAndSidecars(): void
     {
-        $paths = new ComponentPaths($this->tmp);
-        $folder = $this->tmp.'/components/hotfire/post/🔥create';
-        mkdir($folder, 0777, true);
-        file_put_contents($folder.'/create.php', '<?php ');
-        file_put_contents($folder.'/create.view.php', '<form></form>');
-        file_put_contents($folder.'/create.js', '// js');
-        file_put_contents($folder.'/create.css', '.x{}');
+        $folder = $this->scaffold('components/hotfire/post/🔥create', [
+            'create.php',
+            'create.view.php',
+            'create.js',
+            'create.css',
+        ]);
 
-        $components = $paths->discover();
+        $components = (new ComponentPaths($this->tmp))->discover();
 
-        self::assertSame(['post.create'], array_column($components, 'name'));
+        self::assertCount(1, $components);
+        self::assertSame('post.create', $components[0]['name']);
         self::assertSame($folder, $components[0]['folder']);
         self::assertSame($folder.'/create.php', $components[0]['class']);
         self::assertSame($folder.'/create.view.php', $components[0]['view']);
-        self::assertSame(
-            [$folder.'/create.css', $folder.'/create.js'],
-            $components[0]['sidecars'],
-        );
+        self::assertSame([$folder.'/create.css', $folder.'/create.js'], $components[0]['sidecars']);
     }
 
-    public function testDiscoverFindsFirstLevelAndDeeplyNestedComponents(): void
+    public function testDiscoversFirstLevelAndDeeplyNestedComponentsSortedByName(): void
     {
-        $paths = new ComponentPaths($this->tmp);
-        mkdir($this->tmp.'/components/hotfire/🔥counter', 0777, true);
-        file_put_contents($this->tmp.'/components/hotfire/🔥counter/counter.php', '<?php ');
-        mkdir($this->tmp.'/components/hotfire/admin/blog/🔥publish', 0777, true);
-        file_put_contents($this->tmp.'/components/hotfire/admin/blog/🔥publish/publish.view.php', '<p></p>');
+        $this->scaffold('components/hotfire/🔥counter', ['counter.php']);
+        $this->scaffold('components/hotfire/admin/blog/🔥publish', ['publish.view.php']);
+        $this->scaffold('components/hotfire/🔥bottom-logout', ['bottom-logout.php']);
 
-        $components = $paths->discover(false);
+        $components = (new ComponentPaths($this->tmp))->discover();
 
-        self::assertSame(['admin.blog.publish', 'counter'], array_column($components, 'name'));
-        self::assertArrayNotHasKey('class', $components[0]);
-        self::assertArrayNotHasKey('sidecars', $components[0]);
+        self::assertSame(['admin.blog.publish', 'bottom-logout', 'counter'], array_column($components, 'name'));
+
+        // Every entry keeps the same shape, with null/empty values for the
+        // artifacts a component does not have.
+        self::assertSame(['name', 'folder', 'class', 'view', 'sidecars'], array_keys($components[0]));
+        self::assertNull($components[0]['class']);
+        self::assertSame([], $components[0]['sidecars']);
+        self::assertSame($components[0]['folder'].'/publish.view.php', $components[0]['view']);
     }
 
-    public function testDiscoverMissingRootReturnsEmptyList(): void
+    public function testMissingRootReturnsEmptyList(): void
     {
         self::assertSame([], (new ComponentPaths($this->tmp))->discover());
     }
 
-    public function testUnmarkedAndMalformedFoldersAreIgnored(): void
+    public function testDiscoveryRequiresAViewsRoot(): void
     {
-        $paths = new ComponentPaths($this->tmp);
-        mkdir($this->tmp.'/components/hotfire/post/plain-create', 0777, true);
-        file_put_contents($this->tmp.'/components/hotfire/post/plain-create/create.php', '<?php ');
-        mkdir($this->tmp.'/components/hotfire/🔥', 0777, true);
+        $this->expectException(InvalidArgumentException::class);
 
-        self::assertSame([], $paths->discover(false));
+        (new ComponentPaths())->discover();
     }
 
-    public function testRespectsCustomViewPrefixAndEmoji(): void
+    public function testUnmarkedAndMalformedFoldersAreIgnored(): void
+    {
+        $this->scaffold('components/hotfire/post/plain-create', ['create.php']);
+        $this->scaffold('components/hotfire/🔥', []);
+        $this->scaffold('components/hotfire/post/🔥Create', ['create.php']);
+
+        self::assertSame([], (new ComponentPaths($this->tmp))->discover());
+    }
+
+    public function testStrayFilesAreNotReportedAsSidecars(): void
+    {
+        $folder = $this->scaffold('components/hotfire/🔥counter', [
+            'counter.php',
+            'counter.view.php',
+            'counter.js',
+            '.DS_Store',
+            'notes.txt',
+            'Thumbs.db',
+        ]);
+
+        $components = (new ComponentPaths($this->tmp))->discover();
+
+        self::assertSame([$folder.'/counter.js'], $components[0]['sidecars']);
+    }
+
+    public function testCustomPrefixAndEmojiAreHonored(): void
     {
         Config::setShared(new Config(viewPrefix: 'sections'));
-        $paths = new ComponentPaths($this->tmp, '⚡');
-        mkdir($this->tmp.'/sections/blog/⚡draft', 0777, true);
-        file_put_contents($this->tmp.'/sections/blog/⚡draft/draft.php', '<?php ');
+        $folder = $this->scaffold('sections/blog/⚡draft', ['draft.php', 'draft.css']);
 
+        $paths = new ComponentPaths($this->tmp, '⚡');
         $components = $paths->discover();
 
         self::assertSame(['blog.draft'], array_column($components, 'name'));
-        self::assertSame($this->tmp.'/sections/blog/⚡draft/draft.php', $components[0]['class']);
+        self::assertSame($folder.'/draft.php', $components[0]['class']);
+        self::assertSame([$folder.'/draft.css'], $components[0]['sidecars']);
+        self::assertSame($this->tmp.'/sections', $paths->hotfireRoot());
+        self::assertSame('sections/blog/⚡draft', $paths->folder('blog.draft'));
+        self::assertSame('sections/blog/⚡draft/draft.php', $paths->classRelative('blog.draft'));
     }
 
-    public function testDiscoversGeneratedScaffoldBottomLogout(): void
+    public function testEmojiMustBeDirectorySafe(): void
     {
-        $paths = new ComponentPaths($this->tmp);
-        $folder = $this->tmp.'/components/hotfire/🔥bottom-logout';
+        foreach (['', '🔥/', 'a.b', 'a\\b'] as $unsafe) {
+            try {
+                new ComponentPaths($this->tmp, $unsafe);
+                self::fail('Expected InvalidArgumentException for emoji ['.$unsafe.'].');
+            } catch (InvalidArgumentException) {
+                self::assertTrue(true);
+            }
+        }
+    }
+
+    public function testDiscoveryAgreesWithTheGenerator(): void
+    {
+        $generator = new ComponentGenerator($this->tmp, 'App\\Components');
+        $classPath = $generator->classPath('bottom-logout');
+        mkdir(dirname($classPath), 0777, true);
+        file_put_contents($classPath, $generator->classContent('bottom-logout', []));
+        file_put_contents($generator->viewPath('bottom-logout'), $generator->viewContent('bottom-logout', []));
+
+        $components = (new ComponentPaths($this->tmp))->discover();
+
+        self::assertCount(1, $components);
+        self::assertSame('bottom-logout', $components[0]['name']);
+        self::assertSame(dirname($classPath), $components[0]['folder']);
+        self::assertSame($classPath, $components[0]['class']);
+        self::assertSame($generator->viewPath('bottom-logout'), $components[0]['view']);
+        self::assertSame('components/hotfire/🔥bottom-logout/bottom-logout.view', $generator->viewRelative('bottom-logout'));
+    }
+
+    /**
+     * Creates a folder below the temp root and touches the given file names.
+     *
+     * @param list<string> $files
+     *
+     * @return string Absolute folder path.
+     */
+    private function scaffold(string $relative, array $files): string
+    {
+        $folder = $this->tmp.'/'.$relative;
         mkdir($folder, 0777, true);
-        foreach (['bottom-logout.php', 'bottom-logout.view.php', 'bottom-logout.test.php'] as $file) {
+        foreach ($files as $file) {
             file_put_contents($folder.'/'.$file, 'x');
         }
 
-        $components = $paths->discover();
-
-        self::assertSame(['bottom-logout'], array_column($components, 'name'));
-        self::assertSame($folder.'/bottom-logout.php', $components[0]['class']);
-        self::assertSame($folder.'/bottom-logout.view.php', $components[0]['view']);
-        self::assertSame([$folder.'/bottom-logout.test.php'], $components[0]['sidecars']);
+        return $folder;
     }
 }

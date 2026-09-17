@@ -7,13 +7,14 @@ namespace Components\Commands;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 use Components\Hotfire\ComponentPaths;
+use Components\Hotfire\Exception\HotfireException;
 
 /**
  * php spark list:hotfire [options]
  *
- * Discovers every Hotfire component under "<views>/components/hotfire" —
- * the folders marked with the 🔥 indicator (or the --emoji override) — and
- * reports the component name, its class, template and sidecars.
+ * Discovers every Hotfire component under the configured view prefix — the
+ * folders marked with the 🔥 indicator (or the --emoji override) — and reports
+ * the component name, its class, template and sidecars.
  *
  *   php spark list:hotfire
  *   php spark list:hotfire --simple
@@ -22,7 +23,7 @@ use Components\Hotfire\ComponentPaths;
  * The command is auto-discovered by spark from this package (any class in
  * vendor/**\Commands\|Components\Commands extending BaseCommand).
  */
-class ListHotfire extends BaseCommand
+final class ListHotfire extends BaseCommand
 {
     use CliOptions;
 
@@ -50,7 +51,7 @@ class ListHotfire extends BaseCommand
      * @var array<string, string>
      */
     protected $options = [
-        '--simple' => 'Component names only (no class/template/sidecar table).',
+        '--simple' => 'Component names only (no class/template/sidecar detail).',
         '--views'  => 'Views folder. Default: APPPATH.\'Views\'.',
         '--emoji'  => 'Visual marker on the component folder. Default: "🔥".',
     ];
@@ -59,54 +60,69 @@ class ListHotfire extends BaseCommand
      * Actually execute the command.
      *
      * @param array<int|string, string|null> $params
+     *
+     * @return int Exit code
      */
-    public function run(array $params)
+    public function run(array $params): int
     {
-        $views = $this->option($params, 'views');
-        if ($views === null) {
-            if (! defined('APPPATH')) {
-                CLI::error('Hotfire: cannot resolve APPPATH; run from a CodeIgniter 4 application or pass --views.');
-                CLI::newLine();
+        try {
+            $paths = new ComponentPaths($this->viewsRoot($params), $this->option($params, 'emoji') ?? '🔥');
+            $components = $paths->discover();
+        } catch (HotfireException $exception) {
+            CLI::error('Hotfire: '.$exception->getMessage());
+            CLI::newLine();
 
-                return EXIT_ERROR;
-            }
-            $views = rtrim((string) APPPATH, '/\\').'/Views';
+            return EXIT_ERROR;
         }
 
-        $paths = new ComponentPaths(rtrim((string) $views, '/\\'), $this->option($params, 'emoji') ?? '🔥');
-        $components = $paths->discover(! $this->has($params, 'simple'));
-
+        $root = clean_path($paths->hotfireRoot());
         if ($components === []) {
-            CLI::write('No Hotfire components found under '.clean_path($paths->hotfireRoot()).'.', 'yellow');
+            CLI::write('No Hotfire components found under '.$root.'.', 'yellow');
             CLI::newLine();
 
             return EXIT_SUCCESS;
         }
 
-        CLI::write(count($components).' Hotfire component'.(count($components) === 1 ? '' : 's').' under '.clean_path($paths->hotfireRoot()).':', 'green');
+        $detailed = ! $this->has($params, 'simple');
+        CLI::write(sprintf(
+            '%d Hotfire component%s under %s:',
+            count($components),
+            count($components) === 1 ? '' : 's',
+            $root,
+        ), 'green');
         CLI::newLine();
 
         foreach ($components as $component) {
-            CLI::write($component['name'], 'white');
-            if (! array_key_exists('class', $component)) {
-                continue;
-            }
-
-            /** @var string|null $class */
-            $class = $component['class'];
-            /** @var string|null $view */
-            $view = $component['view'];
-            /** @var list<string> $sidecars */
-            $sidecars = $component['sidecars'];
-
-            CLI::write('  class     '.($class !== null ? clean_path($class) : '(missing)'));
-            CLI::write('  template  '.($view !== null ? clean_path($view) : '(missing)'));
-            foreach ($sidecars as $sidecar) {
-                CLI::write('  sidecar   '.clean_path($sidecar));
-            }
-            CLI::newLine();
+            $this->render($component, $detailed);
         }
 
         return EXIT_SUCCESS;
+    }
+
+    /**
+     * Prints one component: its name plus, unless --simple, the class, template
+     * and sidecars it owns.
+     *
+     * @param array{name: string, folder: string, class: string|null, view: string|null, sidecars: list<string>} $component
+     */
+    private function render(array $component, bool $detailed): void
+    {
+        CLI::write($component['name'], 'white');
+        if (! $detailed) {
+            return;
+        }
+
+        CLI::write('  class     '.self::describe($component['class']));
+        CLI::write('  template  '.self::describe($component['view']));
+        foreach ($component['sidecars'] as $sidecar) {
+            CLI::write('  sidecar   '.clean_path($sidecar));
+        }
+        CLI::newLine();
+    }
+
+    /** Absolute path, or a "(missing)" marker when the artifact is absent. */
+    private static function describe(?string $file): string
+    {
+        return $file === null ? '(missing)' : clean_path($file);
     }
 }

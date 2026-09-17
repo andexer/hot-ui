@@ -35,7 +35,12 @@ final class PublishCommand extends BaseCommand
         'only' => '"assets", "views" or "both" (default: both)',
     ];
 
-    public function run(array $params): void
+    /**
+     * @param array<int|string, string|null> $params
+     *
+     * @return int Exit code
+     */
+    public function run(array $params): int
     {
         try {
             $which = $this->resolveTarget($params);
@@ -48,10 +53,13 @@ final class PublishCommand extends BaseCommand
             }
         } catch (Throwable $e) {
             CLI::error(sprintf('Hot-UI: %s', $e->getMessage()));
-            exit(EXIT_ERROR);
+
+            return EXIT_ERROR;
         }
 
         CLI::write('Hot-UI: done.', 'green');
+
+        return EXIT_SUCCESS;
     }
 
     /**

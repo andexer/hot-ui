@@ -4,13 +4,22 @@ declare(strict_types=1);
 
 namespace Components\Hotfire;
 
+use Components\Hotfire\Exception\InvalidComponentMarkerException;
+use Components\Hotfire\Exception\InvalidComponentNameException;
+use Components\Hotfire\Exception\MissingViewsRootException;
+use FilesystemIterator;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
+
 /**
- * Pure path/naming logic shared by the scaffold generator and the CI4 boot
- * autoloader, so class files and view files always resolve identically.
+ * Path/naming logic shared by the scaffold generator, the discovery command
+ * and the CI4 boot autoloader, so class files, view files and sidecars always
+ * resolve identically.
  *
- * A Hotfire component owns one folder under the views root — the Livewire 4
- * "voltage" pattern, with 🔥 as Hot-UI's indicator — where its class, template
- * and sidecars cohabit:
+ * A Hotfire component owns one folder below the configured view prefix — the
+ * Livewire 4 "voltage" pattern, with 🔥 as Hot-UI's indicator — where its
+ * class, template and sidecars cohabit:
  *
  *   post.create  →  components/hotfire/post/🔥create/create.php
  *                   components/hotfire/post/🔥create/create.view.php
@@ -19,8 +28,10 @@ namespace Components\Hotfire;
  *                   components/hotfire/post/🔥create/create.global.css
  *                   components/hotfire/post/🔥create/create.test.php
  *
- * The 🔥 prefix is a visual affordance only (like Livewire 4's ⚡) and can be
- * changed via the emoji in the constructor or make:hotfire --emoji.
+ * The 🔥 prefix is a visual affordance only (like Livewire 4's ⚡) and comes
+ * from the constructor; the folder prefix is always Config::viewPrefix(), so
+ * generation, discovery and autoloading can never disagree about where a
+ * component lives.
  */
 final class ComponentPaths
 {
@@ -28,13 +39,16 @@ final class ComponentPaths
         private readonly ?string $viewsRoot = null,
         private readonly string $emoji = '🔥',
     ) {
+        if ($this->emoji === '' || strpbrk($this->emoji, '/\\.') !== false) {
+            throw new InvalidComponentMarkerException($this->emoji);
+        }
     }
 
     /**
      * Splits a component name into path segments, validating safety.
      *
      * Accepts "post.create", "post/create", "Post/Create", "BottomLogout" or
-     * "bottom-loggout". Traversal ("..") and empty/garbage names are rejected.
+     * "bottom-logout". Traversal ("..") and empty/garbage names are rejected.
      *
      * @return list<string>
      *
@@ -44,19 +58,13 @@ final class ComponentPaths
     {
         $name = trim($name, " \t\n\r\0\x0B./\\");
         if ($name === '' || preg_match('/\.\./', $name) || ! preg_match('#^[A-Za-z0-9_\-./\\\\]+$#', $name)) {
-            throw new \InvalidArgumentException(sprintf(
-                'Invalid Hotfire component name [%s]; use dotted or slashed segments (post.create).',
-                $name,
-            ));
+            throw new InvalidComponentNameException($name, 'use dotted or slashed segments (post.create).');
         }
 
         $segments = preg_split('/[.\/\\\\]+/', $name) ?: [];
         foreach ($segments as $segment) {
             if ($segment === '' || $segment === '.' || $segment === '..') {
-                throw new \InvalidArgumentException(sprintf(
-                    'Invalid Hotfire component name [%s]; empty or traversal segments are not allowed.',
-                    $name,
-                ));
+                throw new InvalidComponentNameException($name, 'empty or traversal segments are not allowed.');
             }
         }
 
@@ -64,7 +72,7 @@ final class ComponentPaths
     }
 
     /** kebab-cases a segment: Post → post, BottomLogout → bottom-logout. */
-    public function kebab(string $segment): string
+    public static function kebab(string $segment): string
     {
         $segment = str_replace(['_', ' '], '-', $segment);
         $segment = preg_replace('/(?<!^)[A-Z]/', '-$0', $segment) ?? $segment;
@@ -76,7 +84,7 @@ final class ComponentPaths
      * Pascal-cases a segment: create → Create, create-form → CreateForm.
      * Existing camel humps are preserved: BottomLogout → BottomLogout.
      */
-    public function pascal(string $segment): string
+    public static function pascal(string $segment): string
     {
         $out = '';
         foreach (preg_split('/[^A-Za-z0-9]+/', $segment) ?: [] as $word) {
@@ -96,7 +104,7 @@ final class ComponentPaths
     {
         $segments = $this->segments($name);
 
-        return $this->kebab(array_pop($segments));
+        return self::kebab(array_pop($segments));
     }
 
     /** kebab dirs for every segment except the leaf. */
@@ -105,23 +113,29 @@ final class ComponentPaths
         $segments = $this->segments($name);
         array_pop($segments);
 
-        return array_map($this->kebab(...), $segments);
+        return array_map(self::kebab(...), $segments);
     }
 
     /**
-     * Special folder owning every artifact of a component, view-prefix
-     * included and always ending with the emoji-named leaf:
-     * components/hotfire/post/🔥create.
+     * Special folder owning every artifact of a component: the configured view
+     * prefix, its kebab parent dirs and the emoji-named leaf
+     * (components/hotfire/post/🔥create).
      */
     public function folder(string $name): string
     {
-        $parts = ['components', 'hotfire'];
+        $parts = array_values(array_filter(explode('/', $this->prefix()), 'strlen'));
         foreach ($this->parentDirs($name) as $dir) {
             $parts[] = $dir;
         }
         $parts[] = $this->emoji.$this->leafKebab($name);
 
         return implode('/', $parts);
+    }
+
+    /** Class file of a component, relative to the views root (collocated). */
+    public function classRelative(string $name): string
+    {
+        return $this->folder($name).'/'.$this->leafKebab($name).'.php';
     }
 
     /** Engine view name of the template ("...create.view", ".php" appended at render time). */
@@ -131,99 +145,124 @@ final class ComponentPaths
     }
 
     /**
-     * Discovers every component folder under "<viewsRoot>/components/hotfire"
-     * — the folders whose leaf segment carries the emoji indicator — and maps
-     * the component name each one owns back to a relative "post.create" name.
-     *
-     * The returned list of stubs is deliberately render-free (no autoloading,
-     * no class_exists) so it also works from the CLI without the app booted:
-     * each entry is rebuildable with this same instance via folder(),
-     * viewRelative() or className() on $name.
-     *
-     * @return list<array{name: string, folder: string, class: string|null, view: string|null, sidecars: list<string>}>|
-     *              list<array{name: string, folder: string}>
-     *              Keys "class"/"view"/"sidecars" are absolute paths and only
-     *              present when $details is true; folders that hold a
-     *              "<leaf>.php" class or a "<leaf>.view.php" template report
-     *              them, any other "<leaf>.<suffix>" file counts as a sidecar
-     *              (sorted, with sidecars owned by other folders never leaking
-     *              in).
+     * Absolute path of the configured view prefix — the folder holding every
+     * emoji-marked component folder (the walk root of discover()).
      */
-    public function discover(bool $details = true): array
+    public function hotfireRoot(): string
     {
-        $root = $this->hotfireRoot();
+        $prefix = $this->prefix();
+
+        return rtrim((string) $this->viewsRoot, '/\\').($prefix === '' ? '' : '/'.$prefix);
+    }
+
+    /**
+     * Every component below the hotfire root, with the artifacts each one owns.
+     *
+     * Filesystem-only (nothing is autoloaded or rendered) so the CLI can call it
+     * without the app booted. Entries are sorted by name and always share one
+     * shape: "class" and "view" are null when the artifact is missing, and
+     * "sidecars" lists the component's other "<leaf>.<suffix>" files in
+     * alphabetical order.
+     *
+     *   ['name' => 'post.create',
+     *    'folder' => '/views/components/hotfire/post/🔥create',
+     *    'class' => '/views/…/create.php',
+     *    'view' => '/views/…/create.view.php',
+     *    'sidecars' => ['/views/…/create.js']]
+     *
+     * @return list<array{name: string, folder: string, class: string|null, view: string|null, sidecars: list<string>}>
+     *
+     * @throws \InvalidArgumentException Without a views root there is nothing to walk.
+     */
+    public function discover(): array
+    {
+        if ($this->viewsRoot === null) {
+            throw MissingViewsRootException::forDiscovery();
+        }
+
+        $root = strtr($this->hotfireRoot(), '\\', '/');
         if (! is_dir($root)) {
             return [];
         }
 
-        /** @var list<array{name: string, folder: string, class: string|null, view: string|null, sidecars: list<string>}> $out */
-        $out = [];
+        $components = [];
         foreach ($this->componentDirs($root) as $dir) {
             $name = $this->nameForFolder($root, $dir);
-            if ($name === null) {
-                continue;
+            if ($name !== null) {
+                $components[] = $this->artifacts($name, $dir);
             }
-            $entry = ['name' => $name, 'folder' => $dir];
-            if ($details) {
-                $leaf = $this->leafKebab($name);
-                $entry += [
-                    'class'    => is_file($dir.'/'.$leaf.'.php') ? $dir.'/'.$leaf.'.php' : null,
-                    'view'     => is_file($dir.'/'.$leaf.'.view.php') ? $dir.'/'.$leaf.'.view.php' : null,
-                    'sidecars' => [],
-                ];
-                foreach (scandir($dir) ?: [] as $file) {
-                    if ($file === '.' || $file === '..' || $file === $leaf.'.php' || $file === $leaf.'.view.php' || ! is_file($dir.'/'.$file)) {
-                        continue;
-                    }
-                    $entry['sidecars'][] = $dir.'/'.$file;
-                }
-                sort($entry['sidecars']);
-            }
-            $out[] = $entry;
         }
 
-        usort($out, static fn (array $a, array $b): int => strcmp($a['name'], $b['name']));
+        usort($components, static fn (array $a, array $b): int => strcmp($a['name'], $b['name']));
 
-        return $out;
+        return $components;
     }
 
     /**
-     * Absolute path of the configured hotfire view prefix — the folder whose
-     * emoji-marked subdirectories own the components (end of discovery).
+     * Artifacts owned by one component folder, as discover() reports them.
+     *
+     * @return array{name: string, folder: string, class: string|null, view: string|null, sidecars: list<string>}
      */
-    public function hotfireRoot(): string
+    private function artifacts(string $name, string $dir): array
     {
-        $prefix = trim(Config::shared()->viewPrefix(), '/');
+        $leaf = $this->leafKebab($name);
+        $class = $dir.'/'.$leaf.'.php';
+        $view = $dir.'/'.$leaf.'.view.php';
 
-        return rtrim($this->viewsRoot, '/\\').($prefix === '' ? '' : '/'.$prefix);
+        return [
+            'name'     => $name,
+            'folder'   => $dir,
+            'class'    => is_file($class) ? $class : null,
+            'view'     => is_file($view) ? $view : null,
+            'sidecars' => $this->sidecarFiles($dir, $leaf, [$class, $view]),
+        ];
     }
 
     /**
-     * All directories anywhere under $root whose leaf segment starts with the
-     * emoji indicator (checked non-recursively in every recursive level).
+     * Component-owned files other than the class and the template: every
+     * "<leaf>.<suffix>" entry (js, css, global.css, test.php, …) in
+     * alphabetical order, so unrelated or stray files never masquerade as
+     * sidecars.
+     *
+     * @param list<string> $excluded
+     *
+     * @return list<string>
+     */
+    private function sidecarFiles(string $dir, string $leaf, array $excluded): array
+    {
+        $files = [];
+        foreach (glob($dir.'/'.$leaf.'.*') ?: [] as $file) {
+            if (is_file($file) && ! in_array($file, $excluded, true)) {
+                $files[] = $file;
+            }
+        }
+        sort($files);
+
+        return $files;
+    }
+
+    /**
+     * Directories below $root whose leaf segment carries the emoji marker —
+     * the component folders themselves, at any depth.
      *
      * @return list<string>
      */
     private function componentDirs(string $root): array
     {
+        $entries = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST,
+            RecursiveIteratorIterator::CATCH_GET_CHILD,
+        );
+
         $dirs = [];
-        $entries = @scandir($root) ?: [];
+        /** @var SplFileInfo $entry */
         foreach ($entries as $entry) {
-            if ($entry === '.' || $entry === '..') {
-                continue;
-            }
-            $path = $root.'/'.$entry;
-            if (! is_dir($path)) {
-                continue;
-            }
-            if (str_starts_with($entry, $this->emoji)) {
-                $dirs[] = $path;
-                continue;
-            }
-            foreach ($this->componentDirs($path) as $nested) {
-                $dirs[] = $nested;
+            if ($entry->isDir() && str_starts_with($entry->getBasename(), $this->emoji)) {
+                $dirs[] = strtr($entry->getPathname(), '\\', '/');
             }
         }
+        sort($dirs);
 
         return $dirs;
     }
@@ -244,21 +283,27 @@ final class ComponentPaths
         $parent = dirname($dir);
         $relative = trim(substr($parent, strlen(rtrim($root, '/\\'))), '/');
         $segments = $relative === '' ? [] : explode('/', $relative);
-        $segments[] = $this->kebab(substr($leaf, strlen($this->emoji)));
+        $segments[] = self::kebab(substr($leaf, strlen($this->emoji)));
 
         if (in_array('', $segments, true)) {
             return null;
         }
 
-        // Round-trip: parents must already be kebab-clean and the leaf must
-        // be exactly emoji + kebab(rest), so the derived name rebuilds the
-        // very same directory below the hotfire root.
+        // Round-trip: parents must already be kebab-clean and the leaf must be
+        // exactly emoji + kebab(rest), so the derived name rebuilds the very
+        // same directory below the hotfire root.
         $expected = rtrim($root, '/\\');
         $last = count($segments) - 1;
         foreach ($segments as $index => $segment) {
-            $expected .= '/'.($index === $last ? $this->emoji.$segment : $this->kebab($segment));
+            $expected .= '/'.($index === $last ? $this->emoji.$segment : self::kebab($segment));
         }
 
         return $expected === $dir ? implode('.', $segments) : null;
+    }
+
+    /** View prefix every component folder lives under (configured, trimmed). */
+    private function prefix(): string
+    {
+        return trim(Config::shared()->viewPrefix(), '/');
     }
 }

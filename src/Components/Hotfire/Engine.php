@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Components\Hotfire;
 
+use Components\Hotfire\Exception\InvalidActionException;
+use Components\Hotfire\Exception\UnknownComponentException;
 use Components\HotUI;
 use Components\Ui;
 
@@ -90,21 +92,17 @@ final class Engine
         if ($name === 'model') {
             $property = (string) ($action['property'] ?? '');
             if (! self::isModelProperty($component, $property, $state)) {
-                throw new \RuntimeException(sprintf(
-                    'Hotfire: [%s] is not a declared public state property of %s.',
-                    $property === '' ? '(empty)' : $property,
-                    $class,
-                ));
+                throw InvalidActionException::notAStateProperty($class, $property);
             }
             $component->{$property} = self::castValue($component, $property, $action['value'] ?? null);
             $component->notifyUpdated($property);
         } elseif ($name !== 'poll') {
             $method = (string) ($action['method'] ?? '');
             if ($config->isReserved($method)) {
-                throw new \RuntimeException(sprintf('Hotfire: framework method [%s] cannot be used as an action.', $method));
+                throw InvalidActionException::reservedMethod($class, $method);
             }
             if (! method_exists($component, $method) || ! (new \ReflectionMethod($component, $method))->isPublic()) {
-                throw new \RuntimeException(sprintf('Hotfire: action [%s] is not a public method of %s.', $method, $class));
+                throw InvalidActionException::notAPublicMethod($class, $method);
             }
             $component->{$method}(...((array) ($action['params'] ?? [])));
         }
@@ -147,7 +145,7 @@ final class Engine
     private static function instantiate(string $class): Component
     {
         if ($class === '' || ! class_exists($class) || ! is_subclass_of($class, Component::class)) {
-            throw new \RuntimeException(sprintf('Hotfire: [%s] is not a registered Hotfire component.', $class));
+            throw new UnknownComponentException($class);
         }
 
         $component = new $class();

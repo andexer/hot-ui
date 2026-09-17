@@ -7,6 +7,17 @@ on:
   pull_request:
 
 jobs:
+  lint:
+    name: php-best-practices
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+      - name: Lint (no @ suppression, strict_types, return types)
+        run: composer lint
+
   test:
     runs-on: ubuntu-latest
     strategy:

@@ -253,7 +253,7 @@ bootstrap with `Config::setShared($config)`):
 | Setting | Default | Purpose |
 |---|---|---|
 | `endpoint` | `hot-ui/update` | URL the driver posts to |
-| `viewPrefix` | `components/hotfire` | Folder for component templates without an explicit one |
+| `viewPrefix` | `components/hotfire` | Single source of truth for component folders: scaffolding, discovery and the template fallback all resolve below it |
 | `snapshotKey` / `snapshotKeyEnv` | env `HOTUI_SNAPSHOT_KEY` | Signing key source |
 | `directives` | `click, model, poll, change, key` | `hot:*` → `data-hot-*` map |
 | `reserved` | `mount, booted, updated, ...` | Framework methods never callable as actions |
@@ -314,6 +314,40 @@ tabs and horizontal scaling work exactly like the pattern they're inspired by.
 | `Components\Hotfire\HtmlTransform` | `apply()` | Passes `hot:*` → `data-hot-*` |
 | `Components\Ci4\Http\HotfireController` | `update()` | POST round-trip endpoint |
 | `Ci4::hotfire($component)` | — | Renders the driver-ready fragment |
+
+### Errors
+
+Every failure the layer raises implements
+`Components\Hotfire\Exception\HotfireException`, so one catch covers the whole
+family, while each class still extends the SPL exception matching its nature
+(so existing `catch (\InvalidArgumentException|\RuntimeException)` code and the
+generated tests keep working):
+
+| Exception | Base | Raised when |
+|---|---|---|
+| `InvalidComponentNameException` | `InvalidArgumentException` | the component name is empty, garbled or tries to traverse |
+| `InvalidComponentMarkerException` | `InvalidArgumentException` | the 🔥 / `--emoji` marker is empty or not directory-safe |
+| `InvalidComponentPropertyException` | `InvalidArgumentException` | a scaffold property (`--props`) is not a plain identifier |
+| `InvalidNamespaceException` | `InvalidArgumentException` | the generated class root namespace is invalid |
+| `MissingViewsRootException` | `InvalidArgumentException` | discovery or the console cannot resolve a views root |
+| `InvalidSnapshotException` | `InvalidArgumentException` | the signed payload is malformed, oversized or tampered (`getReason()`) |
+| `MissingSnapshotKeyException` | `RuntimeException` | no snapshot signing key is configured |
+| `UnknownComponentException` | `RuntimeException` | a snapshot names a class that is not a Hotfire component |
+| `InvalidActionException` | `RuntimeException` | the action is reserved, not public, or not signed state (`getAction()`) |
+| `StubTemplateNotFoundException` | `RuntimeException` | a scaffold template is missing or unreadable |
+| `ComponentWriteException` | `RuntimeException` | a scaffold artifact cannot be written (`getPath()`) |
+
+```php
+try {
+    $payload = Engine::call($snapshot, $action);
+} catch (InvalidSnapshotException $exception) {
+    log_message('warning', 'Hotfire rejected state: '.$exception->getReason());
+
+    return $this->response->setStatusCode(422);
+} catch (HotfireException $exception) {
+    // any other Hotfire failure, family-wide
+}
+```
 
 ## Without CodeIgniter 4
 

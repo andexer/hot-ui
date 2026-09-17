@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Components\Hotfire;
 
+use Components\Hotfire\Exception\InvalidSnapshotException;
+use Components\Hotfire\Exception\MissingSnapshotKeyException;
+
 /**
  * Stateless state transport for Hotfire components.
  *
@@ -50,21 +53,21 @@ final class Snapshot
         $key = self::resolveKey($key, $config);
 
         if (! is_string($snapshot['payload'] ?? null) || ! is_string($snapshot['checksum'] ?? null)) {
-            throw new \InvalidArgumentException('Hotfire: malformed snapshot payload.');
+            throw InvalidSnapshotException::malformed();
         }
 
         $payload = $snapshot['payload'];
         if (strlen($payload) > 65536) {
-            throw new \InvalidArgumentException('Hotfire: snapshot payload exceeds the size limit.');
+            throw InvalidSnapshotException::tooLarge(strlen($payload));
         }
         $expected = $snapshot['checksum'];
         if (! hash_equals($expected, self::checksum($payload, $key))) {
-            throw new \InvalidArgumentException('Hotfire: snapshot checksum mismatch.');
+            throw InvalidSnapshotException::checksumMismatch();
         }
 
         $decoded = json_decode((string) base64_decode($payload, true), true, 512, JSON_THROW_ON_ERROR);
         if (! is_array($decoded) || ($decoded['v'] ?? null) !== self::VERSION || ! is_array($decoded['s'] ?? null)) {
-            throw new \InvalidArgumentException('Hotfire: snapshot payload is not valid.');
+            throw InvalidSnapshotException::notValid();
         }
 
         return $decoded['s'];
@@ -74,9 +77,7 @@ final class Snapshot
     {
         $key ??= ($config ?? Config::shared())->snapshotKey();
         if ($key === null || $key === '') {
-            throw new \RuntimeException(
-                'Hotfire: no snapshot key configured. Set the snapshot key environment variable or pass a key.',
-            );
+            throw new MissingSnapshotKeyException();
         }
 
         return $key;

@@ -58,7 +58,7 @@ final class SlotTest extends TestCase
     {
         self::assertTrue((new Slot(null))->isEmpty());
         self::assertTrue((new Slot("  \n"))->isEmpty());
-        self::assertTrue((new Slot(fn () => ''))->isEmpty());
+        self::assertTrue((new Slot(fn (): string => ''))->isEmpty());
         self::assertFalse((new Slot('<i></i>'))->isEmpty());
     }
 

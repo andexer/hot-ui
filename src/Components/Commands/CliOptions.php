@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Components\Commands;
 
 use CodeIgniter\CLI\CLI;
+use Components\Hotfire\Exception\MissingViewsRootException;
 
 /**
  * Option parsing for Hot-UI generator commands.
@@ -63,5 +64,26 @@ trait CliOptions
         $value = CLI::getOption($name);
 
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
+     * Views root a command should work against: "--views" when given, else the
+     * CodeIgniter 4 default (APPPATH.'Views').
+     *
+     * @param array<int|string, string|null> $params
+     *
+     * @throws \InvalidArgumentException When neither is available.
+     */
+    private function viewsRoot(array $params): string
+    {
+        $views = $this->option($params, 'views');
+        if ($views === null) {
+            if (! defined('APPPATH')) {
+                throw MissingViewsRootException::forConsole();
+            }
+            $views = rtrim((string) APPPATH, '/\\').'/Views';
+        }
+
+        return rtrim($views, '/\\');
     }
 }

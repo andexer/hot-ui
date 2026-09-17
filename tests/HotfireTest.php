@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Components\Tests;
 
-use Components\Hotfire\Component;
 use Components\Hotfire\Config;
 use Components\Hotfire\Engine;
 use Components\Hotfire\HtmlTransform;
@@ -14,16 +13,6 @@ use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
-
-class Counter extends Component
-{
-    public int $count = 0;
-
-    public function increment(): void
-    {
-        $this->count++;
-    }
-}
 
 final class HotfireTest extends TestCase
 {

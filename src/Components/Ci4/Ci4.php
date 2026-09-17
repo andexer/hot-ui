@@ -80,7 +80,7 @@ final class Ci4
             }
 
             $relative = substr($class, strlen($prefix));        // e.g. "Post\Create"
-            $path = rtrim($root, '/\\').'/'.$paths->folder($relative).'/'.$paths->leafKebab($relative).'.php';
+            $path = rtrim($root, '/\\').'/'.$paths->classRelative($relative);
 
             if (is_file($path)) {
                 require $path;

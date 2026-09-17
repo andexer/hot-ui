@@ -7,6 +7,8 @@ namespace Components\Commands;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 use Components\Hotfire\ComponentGenerator;
+use Components\Hotfire\Exception\HotfireException;
+use Components\Support\Filesystem;
 
 /**
  * php spark make:hotfire <name> [options]
@@ -23,7 +25,7 @@ use Components\Hotfire\ComponentGenerator;
  * The command is auto-discovered by spark from this package (any class in
  * vendor/**\Commands\|Components\Commands extending BaseCommand).
  */
-class MakeHotfire extends BaseCommand
+final class MakeHotfire extends BaseCommand
 {
     use CliOptions;
 
@@ -75,7 +77,7 @@ class MakeHotfire extends BaseCommand
      *
      * @param array<int|string, string|null> $params
      */
-    public function run(array $params)
+    public function run(array $params): int
     {
         $name = (string) ($params[0] ?? ($this->option($params, 'name') ?? ''));
         if ($name === '') {
@@ -88,7 +90,7 @@ class MakeHotfire extends BaseCommand
         try {
             $generator = $this->generator($params);
 
-            $props = $this->has($params, 'mfc') ? ['title', 'content'] : ($generator)->props($this->option($params, 'props') ?? '');
+            $props = $this->has($params, 'mfc') ? ['title', 'content'] : $generator->props($this->option($params, 'props') ?? '');
             $form = $this->has($params, 'mfc') || $props !== [];
 
             $targets = [
@@ -120,7 +122,7 @@ class MakeHotfire extends BaseCommand
             }
 
             CLI::newLine();
-        } catch (\InvalidArgumentException $exception) {
+        } catch (HotfireException $exception) {
             CLI::error('Hotfire: '.$exception->getMessage());
             CLI::newLine();
 
@@ -142,9 +144,8 @@ class MakeHotfire extends BaseCommand
     {
         $result = [];
         foreach ($targets as $path => $content) {
-            $directory = dirname($path);
-            if (! is_dir($directory) && ! @mkdir($directory, 0o775, true) && ! is_dir($directory)) {
-                CLI::error('Hotfire: cannot create directory '.clean_path($directory));
+            if (! Filesystem::ensureDirectory(dirname($path))) {
+                CLI::error('Hotfire: cannot create directory '.clean_path(dirname($path)));
                 CLI::newLine();
 
                 continue;
@@ -168,19 +169,13 @@ class MakeHotfire extends BaseCommand
 
     private function generator(array $params): ComponentGenerator
     {
-        $views = $this->option($params, 'views');
-        if ($views === null) {
-            if (! defined('APPPATH')) {
-                throw new \InvalidArgumentException('Cannot resolve APPPATH; run from a CodeIgniter 4 application.');
-            }
-            $views = rtrim((string) APPPATH, '/\\').'/Views';
-        }
-
         $namespace = $this->option($params, 'namespace') ?? 'App\\Components';
-        if (! preg_match('#^[A-Za-z_][A-Za-z0-9_\\\\]*$#', trim($namespace, '\\'))) {
-            throw new \InvalidArgumentException(sprintf('Invalid namespace [%s].', $namespace));
-        }
 
-        return new ComponentGenerator($views, trim($namespace, '\\'), __DIR__.'/../Hotfire/templates', $this->option($params, 'emoji') ?? '🔥');
+        return new ComponentGenerator(
+            $this->viewsRoot($params),
+            trim($namespace, '\\'),
+            __DIR__.'/../Hotfire/templates',
+            $this->option($params, 'emoji') ?? '🔥',
+        );
     }
 }

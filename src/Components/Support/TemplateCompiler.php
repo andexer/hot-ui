@@ -46,7 +46,7 @@ final class TemplateCompiler
 
         $code = $this->sign($key, (new ViewCompiler())->compile($sourceCode));
 
-        if (! is_dir($this->cacheDir) && ! @mkdir($this->cacheDir, 0775, true) && ! is_dir($this->cacheDir)) {
+        if (! Filesystem::ensureDirectory($this->cacheDir)) {
             throw new \InvalidArgumentException(sprintf('Cannot create compiled views directory [%s].', $this->cacheDir));
         }
 
@@ -54,8 +54,11 @@ final class TemplateCompiler
         if (file_put_contents($staging, $code, LOCK_EX) === false) {
             throw new \RuntimeException(sprintf('Cannot write compiled view [%s].', $compiled));
         }
-        if (! @rename($staging, $compiled)) {
-            @unlink($staging);
+        if (! is_writable($this->cacheDir) || ! rename($staging, $compiled)) {
+            if (is_file($staging)) {
+                unlink($staging);
+            }
+
             throw new \RuntimeException(sprintf('Cannot replace compiled view [%s].', $compiled));
         }
 
@@ -85,7 +88,11 @@ final class TemplateCompiler
             return false;
         }
 
-        $handle = @fopen($compiled, 'rb');
+        if (! is_readable($compiled)) {
+            return false;
+        }
+
+        $handle = fopen($compiled, 'rb');
         if ($handle === false) {
             return false;
         }

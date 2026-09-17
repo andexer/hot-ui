@@ -100,8 +100,8 @@ final class Views
 
     private static function ensureDirectory(string $directory): void
     {
-        if (! is_dir($directory) && ! mkdir($concreteDirectory = $directory, 0o775, true) && ! is_dir($concreteDirectory)) {
-            throw new \RuntimeException(sprintf('Unable to create directory [%s].', $concreteDirectory));
+        if (! Filesystem::ensureDirectory($directory)) {
+            throw new \RuntimeException(sprintf('Unable to create directory [%s].', $directory));
         }
     }
 }

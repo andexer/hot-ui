@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace Components\Tests;
 
+use Components\Support\Filesystem;
 use Components\Ui;
 use PHPUnit\Framework\TestCase;
+use FilesystemIterator;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
 
 final class ViewSyntaxTest extends TestCase
 {
@@ -17,8 +22,8 @@ final class ViewSyntaxTest extends TestCase
         $this->root = sys_get_temp_dir().'/hot-ui-syntax-'.uniqid();
         foreach (['ui', 'blocks'] as $ns) {
             $dir = $this->root.'/components/'.$ns;
-            if (! is_dir($dir) && ! mkdir($dir, 0o775, true) && ! is_dir($dir)) {
-                throw new \RuntimeException("Unable to create [$dir]");
+            if (! Filesystem::ensureDirectory($dir)) {
+                throw new \RuntimeException(sprintf('Unable to create [%s].', $dir));
             }
         }
 
@@ -56,23 +61,19 @@ PHP);
 
     protected function tearDown(): void
     {
-        $dirs = [$this->root];
-        while ($dirs !== []) {
-            $dir = array_pop($dirs);
-            $items = @scandir($dir) ?: [];
-            foreach ($items as $item) {
-                if ($item === '.' || $item === '..') {
-                    continue;
-                }
-                $path = $dir.'/'.$item;
-                if (is_dir($path)) {
-                    $dirs[] = $path;
-                } else {
-                    @unlink($path);
-                }
-            }
-            @rmdir($dir);
+        if (! is_dir($this->root)) {
+            return;
         }
+
+        $files = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($this->root, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST,
+        );
+        /** @var SplFileInfo $file */
+        foreach ($files as $file) {
+            $file->isDir() ? rmdir($file->getPathname()) : unlink($file->getPathname());
+        }
+        rmdir($this->root);
     }
 
     public function testRendersTagSyntaxPage(): void

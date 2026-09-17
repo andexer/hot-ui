@@ -16,6 +16,7 @@ npm install
 
 | Comando | Qué hace |
 |---|---|
+| `composer lint` | reglas mecánicas de `.agents/skills/php-best-practices`: sin `@` de supresión, `strict_types` en todo archivo, tipo de retorno en toda firma |
 | `composer test` | suite PHPUnit del núcleo PHP (AttributeBag, TailwindMerge, TemplateRenderer, Ui…) |
 | `composer smoke` | renderiza los 384 componentes y valida salida |
 | `composer examples` | renderiza login/dashboard/blog y valida sus páginas |
@@ -51,7 +52,7 @@ docs/*.md                documentación del proyecto (español)
 2. **Cambios de comportamiento**: edita el `.ts`; `npm run dev` regenera el
    bundle `js/app.js` mientras pruebas en la demo o en un host.
 3. **Componente nuevo**: sigue `docs/guia-componentes.md`.
-4. **Antes de commit**: `composer test && composer smoke && npm run typecheck && npm run build` — `build` regenera `js/app.js` (bundle) y `css/hot-ui.min.css`; commitea ambos (son lo que se distribuye; el publicador copia `js/app.js`, nunca `js/src/`).
+4. **Antes de commit**: `composer lint && composer test && composer smoke && npm run typecheck && npm run build` — `build` regenera `js/app.js` (bundle) y `css/hot-ui.min.css`; commitea ambos (son lo que se distribuye; el publicador copia `js/app.js`, nunca `js/src/`).
 
 ## Consumo desde una aplicación externa
 
