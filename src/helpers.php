@@ -162,14 +162,7 @@ function share(array $values): void
  */
 function classes(array $classList): string
 {
-    $parts = [];
-    foreach ($classList as $key => $value) {
-        if (is_int($key) ? (bool) $value : (bool) $value) {
-            $parts[] = is_int($key) ? (string) $value : (string) $key;
-        }
-    }
-
-    return htmlspecialchars(implode(' ', $parts), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    return htmlspecialchars(\Components\Support\Classes::render($classList), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
 /**

@@ -8,8 +8,8 @@ use Closure;
 use Components\Exception\ComponentNotFoundException;
 use Components\Support\RenderContext;
 use Components\Support\Slot;
+use Components\Support\TemplateCompiler;
 use Components\Support\TemplateRenderer;
-use Components\Support\ViewCompiler;
 use Stringable;
 
 /**
@@ -39,6 +39,8 @@ final class Ui
 
     private readonly string $cacheDir;
 
+    private readonly TemplateCompiler $compiler;
+
     /**
      * @param string|null $viewPath Directory containing the components folder.
      */
@@ -65,8 +67,9 @@ final class Ui
         $this->cacheDir = defined('WRITEPATH') && WRITEPATH !== ''
             ? rtrim((string) WRITEPATH, '/\\').'/cache/hotui'
             : rtrim(sys_get_temp_dir(), '/\\').'/hotui-compiled';
+        $this->compiler = new TemplateCompiler($this->cacheDir);
         $this->registry = new ComponentRegistry($namespaces);
-        $this->renderer = new TemplateRenderer($root, $namespaces, $this);
+        $this->renderer = new TemplateRenderer($root, $namespaces, $this, $this->compiler);
     }
 
     /**
@@ -347,31 +350,7 @@ final class Ui
      */
     private function compiledPath(string $source): string
     {
-        $key = sha1($source.filemtime($source).filesize($source));
-        $compiled = $this->cacheDir.'/'.$key.'.php';
-
-        if ($this->isFresh($compiled, $source)) {
-            return $compiled;
-        }
-
-        $code = (new ViewCompiler())->compile((string) file_get_contents($source));
-
-        if (! is_dir($this->cacheDir) && ! @mkdir($this->cacheDir, 0775, true) && ! is_dir($this->cacheDir)) {
-            throw new \RuntimeException(sprintf('Cannot create compiled views directory [%s].', $this->cacheDir));
-        }
-
-        if (file_put_contents($compiled, $code, LOCK_EX) === false) {
-            throw new \RuntimeException(sprintf('Cannot write compiled view [%s].', $compiled));
-        }
-
-        return $compiled;
-    }
-
-    private function isFresh(string $compiled, string $source): bool
-    {
-        return is_file($compiled)
-            && filemtime($compiled) >= filemtime($source)
-            && filesize($compiled) === filesize($source);
+        return $this->compiler->compile($source);
     }
 
     /**

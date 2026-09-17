@@ -24,13 +24,15 @@ final class TemplateRenderer
     private readonly array $folders;
 
     /**
-     * @param string          $root    Directory containing views (layouts, partials, pages).
-     * @param array<string, string> $folders Component namespaces: folder name => absolute path.
+     * @param string                 $root     Directory containing views (layouts, partials, pages).
+     * @param array<string, string>  $folders  Component namespaces: folder name => absolute path.
+     * @param TemplateCompiler|null  $compiler Optional tag-syntax compiler; skips compilation when null.
      */
     public function __construct(
         private readonly string $root,
         array $folders,
         private readonly Ui $ui,
+        private readonly ?TemplateCompiler $compiler = null,
     ) {
         $this->folders = array_map(static fn (string $p): string => rtrim($p, '/\\'), $folders);
     }
@@ -38,17 +40,26 @@ final class TemplateRenderer
     /**
      * Renders a template and returns its output.
      *
-     * @param string                $name "ns::template" (component) or a plain name
-     *                                    relative to the root ("layouts/app", "partials/meta").
-     * @param array<string, mixed>  $data Variables extracted into the template scope.
+     * The template file is compiled through the tag-syntax compiler (cached by
+     * source hash); every component/layout/partial can therefore use the same
+     * <ui:…>/<blocks:…> grammar as pages. $__ui is bound to THIS Ui instance
+     * so nested tags resolve against the correct registry.
+     *
+     * @param string               $name "ns::template" (component) or a plain name
+     *                                   relative to the root ("layouts/app", "partials/meta").
+     * @param array<string, mixed> $data Variables extracted into the template scope.
      */
     public function render(string $name, array $data = []): string
     {
-        $includePath = $this->resolve($name);
+        $includePath = $this->compiler === null
+            ? $this->resolve($name)
+            : $this->compiler->compile($this->resolve($name));
         unset($name);
 
         extract($data, EXTR_OVERWRITE);
         unset($data);
+
+        $__ui = $this->ui;
 
         ob_start();
         try {

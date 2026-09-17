@@ -137,7 +137,10 @@ public function dashboard(): string
 
 `Ci4::view()` compila los tags una sola vez, cachea el archivo y deja el resto
 del HTML/PHP intacto; atributos: `:prop` = PHP, `x-*`/`@*`/`data-*`/`aria-*` =
-strings de Alpine. Detalles en [`docs/sintaxis-tags.md`](docs/sintaxis-tags.md).
+strings de Alpine, `@class([...])`/`@style([...])` = clases/estilos
+condicionales, `{{ $attributes }}` = volcado de bolsa, `slot="nombre"` inline en
+auto-cerrado. La misma sintaxis aplica dentro de plantillas de componentes,
+layouts y partials. Detalles en [`docs/sintaxis-tags.md`](docs/sintaxis-tags.md).
 
 Los demás estilos producen el mismo HTML y se mezclan libremente:
 

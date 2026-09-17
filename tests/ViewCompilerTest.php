@@ -124,6 +124,66 @@ final class ViewCompilerTest extends TestCase
         self::assertStringContainsString("'disabled' => true", $out);
     }
 
+    public function testClassDirectiveMergesConditionalClasses(): void
+    {
+        $out = $this->compiler->compile(
+            "<ui:button @class=\"['px-4' => \$active, 'w-full', 'mt-2' => \$error]\">x</ui:button>",
+        );
+
+        self::assertStringContainsString(
+            "'class' => (string)(\\Components\\Support\\Classes::render(['px-4' => \$active, 'w-full', 'mt-2' => \$error]))",
+            $out,
+        );
+        self::assertStringNotContainsString("'x-on:class'", $out);
+    }
+
+    public function testStyleDirectiveMergesConditionalStyles(): void
+    {
+        $out = $this->compiler->compile(
+            "<ui:button @style=\"['color' => \$danger ? 'red' : 'blue']\">x</ui:button>",
+        );
+
+        self::assertStringContainsString(
+            "'style' => (string)(\\Components\\Support\\Classes::render(['color' => \$danger ? 'red' : 'blue']))",
+            $out,
+        );
+        self::assertStringNotContainsString("'x-on:style'", $out);
+    }
+
+    public function testClassAndStyleDirectivesTolerateNestedCalls(): void
+    {
+        $out = $this->compiler->compile(
+            "<ui:button @class=\"['ok' => str_contains('a b', ' ')]\">x</ui:button>",
+        );
+
+        self::assertStringContainsString("str_contains('a b', ' ')", $out);
+    }
+
+    public function testAttributeBagSplat(): void
+    {
+        $out = $this->compiler->compile('<ui:button {{ $attributes }} />');
+
+        self::assertStringContainsString('...($attributes->all())', $out);
+    }
+
+    public function testAttributeBagSplatRespectsPosition(): void
+    {
+        $out = $this->compiler->compile('<ui:button class="base" {{ $attributes }} disabled />');
+
+        self::assertStringContainsString("'class' => 'base', ...(\$attributes->all())", $out);
+        self::assertStringContainsString("'disabled' => true", $out);
+    }
+
+    public function testInlineSlotWrapsSelfClosingIntoNamedSlot(): void
+    {
+        $out = $this->compiler->compile('<ui:button slot="title" variant="ghost" />');
+
+        self::assertStringContainsString("into('title'); echo \$__ui->renderComponent('ui.button', [[", $out);
+        self::assertStringContainsString("'variant' => 'ghost'", $out);
+        self::assertStringContainsString('$__ui->into();', $out);
+        self::assertStringNotContainsString("'slot' =>", $out);
+    }
+
     public function testSingleQuotedValues(): void
     {
         $out = $this->compiler->compile("<ui:button x-on:click='it\\'s()'>x</ui:button>");

@@ -20,13 +20,19 @@ namespace Components\Support;
  * PHP blocks, and the whitespace between tags.
  *
  * Attribute semantics (hybrid):
- *   - class="a"        static class, merged with any :class below
+ *   - class="a"        static class, merged with any :class / @class below
  *   - :class="$x"      dynamic class (PHP expression), evaluated at render
+ *   - @class([...])    conditional classes (Blade-style list), merged too
+ *   - style="..."      static style, merged with :style / @style below
+ *   - :style="$x"      dynamic style (PHP expression)
+ *   - @style([...])    conditional styles (Blade-style list), merged too
  *   - @click="go()"    Alpine event → x-on:click (modifiers kept)
  *   - x-*              Alpine directive, literal string
  *   - :data-*  :aria-* Alpine binding on the component, literal string
  *   - data-*   aria-*  literal string
  *   - :prop="$v"       other colon keys evaluate PHP expressions
+ *   - {{ $bag }}      spreads the bag's ->all() into props at this position
+ *   - slot="header"    only on self-closing tags: wraps into parent's named slot
  *   - disabled         bare attribute → true
  *
  * Zero dependencies and no DOMDocument: a small hand-rolled scanner keeps the
@@ -151,6 +157,7 @@ final class ViewCompiler
 
         $inner = '';
         $quote = null;
+        $parens = 0;
         while ($pos < $length) {
             $char = $source[$pos];
 
@@ -179,7 +186,15 @@ final class ViewCompiler
                 continue;
             }
 
-            if ($char === '>') {
+            // Balanced parenthesis groups (e.g. @class([...])) may contain
+            // unquoted '>' (the => arrow); only an ungrouped '>' closes a tag.
+            if ($char === '(') {
+                $parens++;
+            } elseif ($char === ')') {
+                $parens--;
+            }
+
+            if ($char === '>' && $parens === 0) {
                 break;
             }
 
@@ -383,7 +398,15 @@ final class ViewCompiler
 
                 case 'self':
                     $used = true;
-                    $out .= '<?php echo $__ui->renderComponent('.var_export($token[1], true).', ['.$this->props($token[2]).']); ?>';
+                    $slot = $this->inlineSlot($token[2]);
+                    $props = $this->props($token[2], $slot === null ? [] : ['slot']);
+                    if ($slot !== null) {
+                        // <ui:button slot="header" /> wraps the component into the
+                        // parent's named slot (Flux-compatible inline slot).
+                        $out .= '<?php $__ui->into('.var_export($slot, true).'); echo $__ui->renderComponent('.var_export($token[1], true).', ['.$props.']); $__ui->into(); ?>';
+                    } else {
+                        $out .= '<?php echo $__ui->renderComponent('.var_export($token[1], true).', ['.$props.']); ?>';
+                    }
                     break;
 
                 case 'slot-open':
@@ -458,11 +481,18 @@ final class ViewCompiler
 
     /**
      * Builds the PHP props array for an opening/self-closing tag.
+     *
+     * @param string       $attrsInner Raw attribute string between the tag name and '>'.
+     * @param list<string> $exclude    Attribute names dropped from the output
+     *                                 (used by inline slot= handling).
      */
-    private function props(string $attrsInner): string
+    private function props(string $attrsInner, array $exclude = []): string
     {
         $entries = [];
         $classes = [];
+        $styles = [];
+        $classIndex = null;
+        $styleIndex = null;
 
         $pos = 0;
         $length = strlen($attrsInner);
@@ -470,6 +500,20 @@ final class ViewCompiler
             if (($attrsInner[$pos] ?? '') === ' ' || ($attrsInner[$pos] ?? '') === "\t" || ($attrsInner[$pos] ?? '') === "\n" || ($attrsInner[$pos] ?? '') === "\r") {
                 $pos++;
                 continue;
+            }
+
+            // {{ $attributes }} → spread the bag (or any expression exposing
+            // ->all()) into the props array at this exact position.
+            if (substr($attrsInner, $pos, 2) === '{{') {
+                $close = strpos($attrsInner, '}}', $pos + 2);
+                if ($close !== false) {
+                    $expr = trim(substr($attrsInner, $pos + 2, $close - $pos - 2));
+                    if ($expr !== '') {
+                        $entries[] = ['bag', $expr];
+                    }
+                    $pos = $close + 2;
+                    continue;
+                }
             }
 
             $key = $this->readAttrName($attrsInner, $pos);
@@ -484,19 +528,48 @@ final class ViewCompiler
                 $pos++;
                 $this->skipWhitespace($attrsInner, $pos);
                 $value = $this->readAttrValue($attrsInner, $pos);
+            } elseif (($attrsInner[$pos] ?? '') === '(') {
+                // Flux-style attached value: @class([...]) / @style([...]).
+                $hasValue = true;
+                $value = $this->readAttrValue($attrsInner, $pos);
+            }
+
+            if (in_array($key, $exclude, true)) {
+                continue;
             }
 
             $entry = $this->attribute($key, $hasValue, $value ?? null);
 
-            if ($entry[0] === 'classstr') {
-                if (($entry[1] ?? '') !== '') {
-                    $classes[] = ['str', $entry[1]];
+            $bucket = match ($entry[0]) {
+                'classstr', 'classexpr', 'classcond' => 'class',
+                'stylestr', 'styleexpr', 'stylecond' => 'style',
+                default => null,
+            };
+
+            if ($bucket === 'class') {
+                [$chunkKind] = $entry;
+                $classes[] = match ($chunkKind) {
+                    'classexpr' => ['expr', (string) ($entry[1] ?? '')],
+                    'classcond' => ['cond', (string) ($entry[1] ?? '')],
+                    default => ['str', (string) ($entry[1] ?? '')],
+                };
+                if ($classIndex === null) {
+                    $classIndex = count($entries);
                 }
                 $entries[] = null;
                 continue;
             }
-            if ($entry[0] === 'classexpr') {
-                $classes[] = ['expr', $entry[1]];
+
+            if ($bucket === 'style') {
+                [$chunkKind] = $entry;
+                $styles[] = match ($chunkKind) {
+                    'styleexpr' => ['expr', (string) ($entry[1] ?? '')],
+                    'stylecond' => ['cond', (string) ($entry[1] ?? '')],
+                    default => ['str', (string) ($entry[1] ?? '')],
+                };
+                if ($styleIndex === null) {
+                    $styleIndex = count($entries);
+                }
                 $entries[] = null;
                 continue;
             }
@@ -504,10 +577,12 @@ final class ViewCompiler
             $entries[] = $entry;
         }
 
-        // Position the merged class entry where the first class attribute appeared.
-        $firstClassIndex = array_search(null, $entries, true);
-        if ($firstClassIndex !== false) {
-            $entries[$firstClassIndex] = $this->mergeClasses($classes);
+        // Position each merged entry where the first chunk of its kind appeared.
+        if ($classIndex !== null) {
+            $entries[$classIndex] = $this->mergeClasses($classes);
+        }
+        if ($styleIndex !== null) {
+            $entries[$styleIndex] = $this->mergeStyles($styles);
         }
 
         $parts = [];
@@ -523,6 +598,30 @@ final class ViewCompiler
     }
 
     /**
+     * Whether a raw attribute value looks like a conditional-class list: an
+     * attached parenthesis group (Flux style) or any array literal.
+     */
+    private function isClassDirective(?string $value): bool
+    {
+        if ($value === null || $value === '') {
+            return false;
+        }
+
+        $first = $value[0];
+
+        return $first === '(' || $first === '[';
+    }
+
+    /**
+     * Inner expression of a @class(...)/@style(...) value; parenthesis groups
+     * are unwrapped, array literals pass through unchanged.
+     */
+    private function classDirectiveBody(string $value): string
+    {
+        return str_starts_with($value, '(') ? substr($value, 1, -1) : $value;
+    }
+
+    /**
      * @return array{0: string, 1: mixed}
      */
     private function attribute(string $key, bool $hasValue, ?string $value): array
@@ -530,11 +629,23 @@ final class ViewCompiler
         $colon = str_starts_with($key, ':');
         $inner = $colon ? substr($key, 1) : $key;
 
+        if ($key === '@class' && $hasValue && $this->isClassDirective($value)) {
+            return ['classcond', $this->classDirectiveBody($value)];
+        }
+        if ($key === '@style' && $hasValue && $this->isClassDirective($value)) {
+            return ['stylecond', $this->classDirectiveBody($value)];
+        }
         if (! $colon && $key === 'class' && $hasValue) {
             return ['classstr', $value ?? ''];
         }
         if ($colon && $inner === 'class') {
             return ['classexpr', $value ?? 'true'];
+        }
+        if (! $colon && $key === 'style' && $hasValue) {
+            return ['stylestr', $value ?? ''];
+        }
+        if ($colon && $inner === 'style') {
+            return ['styleexpr', $value ?? 'true'];
         }
 
         if ($colon) {
@@ -577,6 +688,9 @@ final class ViewCompiler
             case 'all':
                 return var_export($entry[1], true).' => '.trim((string) $entry[2]);
 
+            case 'bag':
+                return '...('.trim((string) $entry[1]).'->all())';
+
             case 'expr':
             default:
                 return var_export($entry[1], true).' => '.trim((string) $entry[2]);
@@ -584,8 +698,10 @@ final class ViewCompiler
     }
 
     /**
-     * Merges "class" and ":class" chunks into one prop, runtime expressions
-     * last so Tailwind conflict resolution keeps caller classes winning.
+     * Merges class chunks (static "class", dynamic ":class", conditional
+     * "@class") into one prop so downstream twMerge resolves conflicts once.
+     * Conditional chunks call Classes::render() at runtime; dynamic chunks keep
+     * their PHP expression evaluated at render time.
      *
      * @param list<array{0: string, 1: string}> $classes
      */
@@ -597,7 +713,7 @@ final class ViewCompiler
             if ($kind === 'str') {
                 $static[] = $value;
             } else {
-                $dynamic[] = trim($value);
+                $dynamic[] = $this->wrapChunk($kind, $value);
             }
         }
 
@@ -605,16 +721,57 @@ final class ViewCompiler
             return ['str', 'class', implode(' ', $static)];
         }
 
-        $exprs = implode(
-            " . ' ' . ",
-            array_map(static fn (string $expr): string => '(string)('.$expr.')', $dynamic),
-        );
+        $exprs = implode(" . ' ' . ", $dynamic);
 
         $value = $static !== []
             ? var_export(implode(' ', $static), true)." . ' ' . ".$exprs
-            : (count($dynamic) === 1 ? '(string)('.$dynamic[0].')' : $exprs);
+            : (count($dynamic) === 1 ? $dynamic[0] : $exprs);
 
         return ['all', 'class', $value];
+    }
+
+    /**
+     * Merges style chunks (static "style", dynamic ":style", conditional
+     * "@style") into one prop; pieces are joined with "; " so downstream
+     * AttributeBag::merge keeps declarations well-formed.
+     *
+     * @param list<array{0: string, 1: string}> $styles
+     */
+    private function mergeStyles(array $styles): array
+    {
+        $static = [];
+        $dynamic = [];
+        foreach ($styles as [$kind, $value]) {
+            if ($kind === 'str') {
+                $static[] = $value;
+            } else {
+                $dynamic[] = $this->wrapChunk($kind, $value);
+            }
+        }
+
+        if ($dynamic === []) {
+            return ['str', 'style', implode('; ', $static)];
+        }
+
+        $exprs = implode(" . '; ' . ", $dynamic);
+
+        $value = $static !== []
+            ? var_export(implode('; ', $static), true)." . '; ' . ".$exprs
+            : (count($dynamic) === 1 ? $dynamic[0] : $exprs);
+
+        return ['all', 'style', $value];
+    }
+
+    /**
+     * Wraps a dynamic style/class chunk into a runtime string expression.
+     */
+    private function wrapChunk(string $kind, string $value): string
+    {
+        if ($kind === 'cond') {
+            return '(string)(\Components\Support\Classes::render('.trim($value).'))';
+        }
+
+        return '(string)('.trim($value).')';
     }
 
     private function slotName(string $attrsInner): string
@@ -622,6 +779,16 @@ final class ViewCompiler
         $result = preg_match('/\bname\s*=\s*(["\'])(.*?)\1/', $attrsInner, $m) === 1;
 
         return $result ? var_export($m[2], true) : 'null';
+    }
+
+    /**
+     * Named slot used by an inline `<ui:… slot="name" />`, or null when absent.
+     */
+    private function inlineSlot(string $attrsInner): ?string
+    {
+        return preg_match('/\bslot\s*=\s*(["\'])(.*?)\1/', $attrsInner, $m) === 1
+            ? $m[2]
+            : null;
     }
 
     private function readAttrName(string $source, int &$pos): string
@@ -644,6 +811,53 @@ final class ViewCompiler
     {
         $length = strlen($source);
         $quote = $source[$pos] ?? '';
+
+        // Balanced-parentheses literal: used by @class([...])/@style([...]).
+        // Handles nested parens and quoted strings, so expressions like
+        // @class(['px-4' => $active, 'w-full']) survive as one value.
+        if ($quote === '(') {
+            $depth = 0;
+            $out = '';
+            while ($pos < $length) {
+                $char = $source[$pos];
+                if ($char === '"' || $char === "'") {
+                    $out .= $char;
+                    $pos++;
+                    $quote = $char;
+                    while ($pos < $length) {
+                        $inner = $source[$pos];
+                        $out .= $inner;
+                        $pos++;
+                        if ($inner === '\\' && $pos < $length) {
+                            $out .= $source[$pos];
+                            $pos++;
+                            continue;
+                        }
+                        if ($inner === $quote) {
+                            break;
+                        }
+                    }
+                    $quote = null;
+                    continue;
+                }
+                if ($char === '(') {
+                    $depth++;
+                } elseif ($char === ')') {
+                    $depth--;
+                    $out .= $char;
+                    $pos++;
+                    if ($depth === 0) {
+                        return $out;
+                    }
+                    continue;
+                }
+                $out .= $char;
+                $pos++;
+            }
+
+            return $out;
+        }
+
         if ($quote !== '"' && $quote !== "'") {
             $out = '';
             while ($pos < $length && ($source[$pos] ?? '') !== ' ' && ($source[$pos] ?? '') !== "\t" && ($source[$pos] ?? '') !== '>') {

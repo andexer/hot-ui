@@ -33,7 +33,15 @@ PHP);
 <?php
 declare(strict_types=1);
 extract(props($__ctx, []));
-?><section data-slot="card" <?= $attributes ?>><?= $header ?><?= $slot ?></section>
+?><section data-slot="card" <?= $attributes ?>><?= $header ?? '' ?><?= $title ?? '' ?><?= $slot ?></section>
+PHP);
+
+        file_put_contents($this->root.'/components/ui/forward.php', <<<'PHP'
+<?php
+declare(strict_types=1);
+extract(props($__ctx, []));
+$forwarded = $attributes ?? new Components\Support\AttributeBag();
+?><ui:button {{ $forwarded }}>ver</ui:button>
 PHP);
 
         file_put_contents($this->root.'/components/blocks/kicker.php', <<<'PHP'
@@ -140,5 +148,42 @@ HTML);
         $out = $this->ui->view('page', ['a' => 'uno', 'b' => 'dos']);
 
         self::assertStringContainsString('class="uno dos', $out);
+    }
+
+    public function testComponentTemplatesCompileTagSyntax(): void
+    {
+        file_put_contents($this->root.'/page.php', '<ui:forward class="extra" data-marca="fwd" />');
+
+        $out = $this->ui->view('page', []);
+
+        self::assertStringContainsString('<button data-slot="button" data-marca="fwd" class="extra h-9 px-4 rounded-md">ver</button>', $out);
+    }
+
+    public function testClassDirectiveEvaluatesConditionalClasses(): void
+    {
+        file_put_contents(
+            $this->root.'/page.php',
+            "<ui:button @class=\"['is-active' => \$active, 'm-2']\">x</ui:button>",
+        );
+
+        $on = $this->ui->view('page', ['active' => true]);
+        self::assertStringContainsString('is-active', $on);
+        self::assertStringContainsString('m-2', $on);
+
+        $off = $this->ui->view('page', ['active' => false]);
+        self::assertStringNotContainsString('is-active', $off);
+        self::assertStringContainsString('m-2', $off);
+    }
+
+    public function testInlineSlotPlacesSelfClosingIntoNamedSlot(): void
+    {
+        file_put_contents($this->root.'/page.php', '<ui:card><ui:button slot="title" />texto</ui:card>');
+
+        $out = $this->ui->view('page', []);
+
+        self::assertStringContainsString(
+            '<section data-slot="card" ><button data-slot="button" class="h-9 px-4 rounded-md"></button>texto</section>',
+            $out,
+        );
     }
 }

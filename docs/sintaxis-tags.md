@@ -19,6 +19,11 @@ archivo una sola vez a las llamadas del API de streaming (con `$__ui->open()`,
 caché compilada y lo incluye como PHP puro. El resto del archivo (HTML normal,
 PHP, `<script>`, `<style>`, comentarios) **no se toca**.
 
+La misma compilación se aplica a las **plantillas de componentes**, `layouts/`
+y `partials/`: la sintaxis `<ui:…>`/`<blocks:…>` vale también dentro de un
+componente, no solo en las páginas. Allí tienes además `$attributes` disponible
+para el `{{ $attributes }}` (ver abajo).
+
 ## Cómo se renderiza
 
 ```php
@@ -44,6 +49,10 @@ cachea en `WRITEPATH/cache/hotui` (CI4) o `sys_get_temp_dir()/hotui-compiled`
 
 ## Semántica de atributos (reglas híbridas)
 
+La gramática sigue el estilo de Flux/Blade: atributos estáticos, props PHP
+(`:`), directivas condicionales `@class`/`@style`, eventos Alpine reasignados y
+_splat_ de bolsas de atributos.
+
 | Atributo | Ejemplo | Tratamiento |
 |---|---|---|
 | Estático | `variant="outline"` | Valor literal (escapado al renderizar) |
@@ -51,12 +60,66 @@ cachea en `WRITEPATH/cache/hotui` (CI4) o `sys_get_temp_dir()/hotui-compiled`
 | `x-*` / `data-*` / `aria-*` | `x-model="q"`, `data-state="open"` | String literal (administra Alpine/ARIA) |
 | `:var` (PHP) | `:variant="$variant"` | Evaluado en `eval` de contexto PHP |
 | `:class` | `:class="$extra"` | Concatenado con `class` (`class . ' ' . $extra`) |
+| `@class` | `@class(['px-4' => $activo, 'w-full'])` | Clases condicionales (ver abajo) |
+| `@style` | `@style(['color' => $nivel ? 'rojo' : 'verde'])` | Estilos condicionales (ver abajo) |
 | `:data-*` / `:aria-*` | `:data-state="abierto ? 'on' : 'off'"` | String literal (NO se evalúa) |
+| `{{ $attributes }}` | en posición de atributo | Vuelca `->all()` de una bolsa en las props |
+| `slot="nombre"` | solo en auto-cerrado `<ui:icon slot="header"/>` | Envuelve el componente en el slot con nombre padre |
 | Sin valor | `disabled` | `true` (booleano) |
 
 > Regla de oro: **`:` + prop = PHP**; `x-*`, `@*`, `data-*`, `aria-*` e
-> `:data-*`/`:aria-*` = strings literales. Si quieres una prop dinámica que no
-> sea `class`, usa `:prop="$expresion"`.
+> `:data-*`/`:aria-*` = strings literales. La única excepción son las directivas
+> `@class(...)`/`@style(...)`, que SÍ son PHP condicional.
+
+### `@class([...])` / `@style([...])` — clases y estilos condicionales
+
+Estilo Blade/Flux: las claves numéricas se emiten cuando su valor es veraz; las
+claves con nombre solo cuando su condición lo es. Se mezclan con la prop
+`class`/`style` final (junto con `class=` y `:class=`), admiten paréntesis
+anidados (llamadas a funciones) y el `=>` no cierra el tag gracias al scanner
+de paréntesis balanceados.
+
+```html
+<ui:button
+    class="base"
+    :class="$cssExtra"
+    @class(['px-4' => $contraido, 'font-bold' => $enfasis, 'w-full'])
+    @click="guardar()"
+>
+    Guardar
+</ui:button>
+```
+
+Compila a `\Components\Support\Classes::render([...])`, evaluado en cada
+request. `@style([...])` equivale para `style`, con las piezas unidas por `; `.
+
+### `{{ $attributes }}` — reenvío de la bolsa (splat)
+
+Igual que en Flux, dentro de un tag de componente puedes volcar una bolsa de
+atributos en las props en esa posición exacta. Los atributos escritos después
+ganan. Requiere una variable en scope que exponga `->all()` — típicamente la
+`$attributes` que devuelve `props()`:
+
+```html
+<!-- dentro de la plantilla de un componente: -->
+<?php extract(props($__ctx, [])); ?>
+<ui:button {{ $attributes }}>ver</ui:button>
+```
+
+Equivale a `$__ui->renderComponent('ui.button', [$attributes->all()])`.
+
+### `slot="nombre"` inline en auto-cerrado
+
+Equivalente a rodear el componente con `<ui:slot name="nombre">`: se coloca en
+el slot con nombre del componente padre. Solo aplica a tags auto-cerrados
+(misma convención que Flux).
+
+```html
+<ui:card>
+    <ui:icon slot="icono" />
+    <ui:button>Guardar</ui:button>
+</ui:card>
+```
 
 ### Props multi-palabra: kebab → camelCase
 
