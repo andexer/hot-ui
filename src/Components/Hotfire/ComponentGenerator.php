@@ -33,7 +33,7 @@ use Components\Hotfire\Support\TemplateRenderer;
  *
  *   php spark make:hotfire post.create --mfc --js --css --test
  *
- *   app/Views/components/hotfire/post/🔥create/
+ *   app/Views/components/post/🔥create/
  *   ├── create.php            # class extends Components\Hotfire\Component
  *   ├── create.view.php       # template ($component + hot:* directives)
  *   ├── create.js             # optional (--js)
@@ -43,6 +43,8 @@ use Components\Hotfire\Support\TemplateRenderer;
  *
  * This class is framework-free: the command wrappers (Components\Commands)
  * only handle CLI plumbing and delegate all content/path logic here.
+ *
+ * Configure component locations via config/hot-ui.php (similar to Livewire).
  */
 final readonly class ComponentGenerator
 {
@@ -137,7 +139,7 @@ final readonly class ComponentGenerator
         array_pop($segments);
 
         $sub = array_map(
-            static fn (string $segment): string => $this->nameTransformer->toPascalCase($segment),
+            fn (string $segment): string => $this->nameTransformer->toPascalCase($segment),
             $segments
         );
 

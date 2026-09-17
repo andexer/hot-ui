@@ -158,30 +158,65 @@ final class ConfigCommand extends BaseCommand
 
 declare(strict_types=1);
 
-// Hot-UI configuration for this CodeIgniter 4 application.
-// Register it before rendering any Hotfire component, e.g. in BaseController::initController.
-//
-//   use Components\Hotfire\Config;
-//   Config::setShared(new \Config\HotUI());
-
 namespace Config;
 
-use Components\Hotfire\Config as HotfireConfig;
+use Components\Config\HotUI as HotUIConfig;
 
-class HotUI extends HotfireConfig
+/**
+ * Hot-UI Configuration for this CodeIgniter 4 application.
+ * 
+ * This configuration file controls the behavior of Hot-UI components.
+ * Similar to Livewire's config, it allows you to customize component
+ * locations, namespaces, and generation behavior.
+ * 
+ * Publish this file to your application: php spark hot-ui:config --publish
+ * 
+ * @version 0.16.0
+ */
+class HotUI extends HotUIConfig
 {
     public function __construct()
     {
-        parent::__construct(
-            // POST route that handles Hotfire round-trips.
-            endpoint: 'hot-ui/update',
-
-            // Sub-folder inside your views path where Hotfire components live.
-            viewPrefix: 'components/hotfire',
-
-            // Signing key for snapshots. Prefer env('HOTUI_SNAPSHOT_KEY') in production.
-            snapshotKey: env('HOTUI_SNAPSHOT_KEY', null),
-        );
+        parent::__construct();
+        
+        // Override default configuration values here:
+        
+        // Component locations (root directories for component discovery)
+        // $this->componentLocations = [
+        //     APPPATH.'Views/components',
+        //     APPPATH.'Views/layouts',
+        // ];
+        
+        // Component namespaces (optional custom namespaces)
+        // $this->componentNamespaces = [
+        //     'layouts' => APPPATH.'Views/layouts',
+        //     'pages' => APPPATH.'Views/pages',
+        // ];
+        
+        // Default emoji for component folders (set to false to disable)
+        // $this->makeCommand['emoji'] = true;
+        // $this->makeCommand['default_emoji'] = '🔥';
+        
+        // Default file generation options
+        // $this->makeCommand['with'] = [
+        //     'js' => false,
+        //     'css' => false,
+        //     'global_css' => false,
+        //     'test' => false,
+        // ];
+        
+        // Root class namespace for components
+        // $this->classNamespace = 'App\\Components';
+        
+        // Paths for component generation
+        // $this->classPath = APPPATH.'Components';
+        // $this->viewPath = APPPATH.'Views/components';
+        
+        // Snapshot key for security (prefer env('HOTUI_SNAPSHOT_KEY'))
+        // $this->snapshotKey = env('HOTUI_SNAPSHOT_KEY', null);
+        
+        // Development mode (additional debugging info)
+        // $this->developmentMode = false;
     }
 }
 PHP;

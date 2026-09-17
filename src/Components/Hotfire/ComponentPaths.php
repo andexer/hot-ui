@@ -21,17 +21,19 @@ use SplFileInfo;
  * Livewire 4 "voltage" pattern, with 🔥 as Hot-UI's indicator — where its
  * class, template and sidecars cohabit:
  *
- *   post.create  →  components/hotfire/post/🔥create/create.php
- *                   components/hotfire/post/🔥create/create.view.php
- *                   components/hotfire/post/🔥create/create.js
- *                   components/hotfire/post/🔥create/create.css
- *                   components/hotfire/post/🔥create/create.global.css
- *                   components/hotfire/post/🔥create/create.test.php
+ *   post.create  →  components/post/🔥create/create.php
+ *                   components/post/🔥create/create.view.php
+ *                   components/post/🔥create/create.js
+ *                   components/post/🔥create/create.css
+ *                   components/post/🔥create/create.global.css
+ *                   components/post/🔥create/create.test.php
  *
  * The 🔥 prefix is a visual affordance only (like Livewire 4's ⚡) and comes
  * from the constructor; the folder prefix is always Config::viewPrefix(), so
  * generation, discovery and autoloading can never disagree about where a
  * component lives.
+ *
+ * Configure the view prefix via config/hot-ui.php or Config::setShared().
  */
 final class ComponentPaths
 {

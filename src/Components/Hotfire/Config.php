@@ -45,7 +45,7 @@ final class Config
      */
     public function __construct(
         private string $endpoint = 'hot-ui/update',
-        private string $viewPrefix = 'components/hotfire',
+        private string $viewPrefix = 'components',
         private ?string $snapshotKey = null,
         private string $snapshotKeyEnv = 'HOTUI_SNAPSHOT_KEY',
         private array $directives = self::DEFAULT_DIRECTIVES,
