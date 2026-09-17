@@ -22,4 +22,9 @@ final class InvalidComponentPropertyException extends \InvalidArgumentException 
     {
         return $this->propertyName;
     }
+
+    public static function invalidName(string $propertyName): self
+    {
+        return new self($propertyName);
+    }
 }

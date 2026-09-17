@@ -19,7 +19,7 @@ declare(strict_types=1);
  * @version 0.16.0
  */
 
-namespace HotUi\Cli;
+
 
 use Components\Ui;
 
