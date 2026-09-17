@@ -31,6 +31,7 @@ dependencias de runtime más allá de `alpinejs`.
 | `Support\Slot` | Slots perezosos (Closure\|string); solo se renderizan si se usan |
 | `Support\Js` | Serialización attribute-safe para Alpine (`js()`) |
 | `helpers.php` | Contrato de plantilla: `props()`, `aware()`, `e()`, `classes()`, `safe_url()`, `ui()` |
+| `Exception\*` | Errores de dominio: marcador del paquete `HotUiException` + una familia por capa (`Hotfire\Exception`, `Support\Exception`, `Commands\Exception`) |
 
 Cada componente es una plantilla PHP que arranca con:
 
@@ -40,6 +41,25 @@ Cada componente es una plantilla PHP que arranca con:
 
 y deja en scope: props con defaults, `$attributes` (bag), `$slot` y los slots
 nombrados pasados. La lógica vive arriba; el marcado abajo, legible.
+
+El paquete no lanza excepciones SPL genéricas: cada fallo tiene su clase de
+dominio y todas implementan `Components\Exception\HotUiException`, así que un
+`catch` cubre el paquete entero. Cada capa estrecha ese marcador con el suyo, de
+modo que también se puede capturar solo la pieza que falló:
+
+| Familia | Cubre |
+|---|---|
+| `Hotfire\Exception\HotfireException` | la capa reactiva: snapshot, acciones, scaffolding |
+| `Support\Exception\SupportException` | motor de plantillas, compilador de tags, attribute bag y publicadores |
+| `Commands\Exception\CommandException` | los comandos spark |
+
+En `Components\Exception` se quedan los fallos que no son de una sola capa
+(`ComponentNotFoundException`, `MissingDirectoryException`,
+`UnresolvedDirectoryException`, `UiPipelineException`, …). En cualquier familia,
+cada clase extiende la SPL que corresponde a su naturaleza —
+`InvalidArgumentException` si el llamador pasó u omitió algo, `LogicException`
+si la secuencia de llamada es inválida, `RuntimeException` si el entorno no
+puede cumplir. `composer lint` impide que se lance una SPL genérica de nuevo.
 
 ## Capa JS (`js/src`)
 

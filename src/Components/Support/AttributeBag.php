@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Components\Support;
 
+use Components\Support\Exception\IllegalAttributeNameException;
+use Components\Support\Exception\ImmutableAttributeBagException;
 use ArrayAccess;
 use IteratorAggregate;
 use Stringable;
@@ -203,12 +205,12 @@ final class AttributeBag implements ArrayAccess, IteratorAggregate, \Countable, 
 
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        throw new \LogicException('AttributeBag is immutable.');
+        throw new ImmutableAttributeBagException();
     }
 
     public function offsetUnset(mixed $offset): void
     {
-        throw new \LogicException('AttributeBag is immutable.');
+        throw new ImmutableAttributeBagException();
     }
 
     /** @return Traversable<string, mixed> */
@@ -231,7 +233,7 @@ final class AttributeBag implements ArrayAccess, IteratorAggregate, \Countable, 
         $out = '';
         foreach ($this->attributes as $key => $value) {
             if (! preg_match(self::KEY_PATTERN, $key)) {
-                throw new \InvalidArgumentException(sprintf('Illegal attribute name [%s].', $key));
+                throw new IllegalAttributeNameException($key);
             }
             if ($value === false || $value === null) {
                 continue;

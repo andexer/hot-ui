@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Components\Support;
 
+use Components\Support\Exception\UnbalancedTagException;
+
 /**
  * Transpiles <ui:…> / <blocks:…> tag syntax into Hot-UI streaming calls.
  *
@@ -46,7 +48,7 @@ final class ViewCompiler
      * Compiles tag syntax to PHP. Returns the source unchanged when it contains
      * no namespaced component tags.
      *
-     * @throws \InvalidArgumentException On unbalanced or malformed tags.
+     * @throws UnbalancedTagException On unbalanced or malformed tags.
      */
     public function compile(string $source): string
     {
@@ -433,10 +435,7 @@ final class ViewCompiler
         }
 
         if ($stack !== []) {
-            throw new \InvalidArgumentException(sprintf(
-                'Unclosed Hot-UI tag [<%s>] in compiled source; every <ui:/<blocks:> tag needs a matching close tag.',
-                str_replace('.', ':', $stack[array_key_last($stack)]),
-            ));
+            throw UnbalancedTagException::unclosed($stack[array_key_last($stack)]);
         }
 
         if (! $used) {
@@ -463,19 +462,12 @@ final class ViewCompiler
     private function pop(array &$stack, string $expected, array $tokens): void
     {
         if ($stack === []) {
-            throw new \InvalidArgumentException(sprintf(
-                'Unexpected closing tag [</%s>] without an opening tag in compiled source.',
-                str_replace('.', ':', $expected),
-            ));
+            throw UnbalancedTagException::unexpected($expected);
         }
 
         $top = array_pop($stack);
         if ($top !== $expected) {
-            throw new \InvalidArgumentException(sprintf(
-                'Mismatched closing tag [</%s>]; expected [</%s>].',
-                str_replace('.', ':', $expected),
-                str_replace('.', ':', $top),
-            ));
+            throw UnbalancedTagException::mismatched($expected, $top);
         }
     }
 

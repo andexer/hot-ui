@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Components\Tests\Support;
 
+use Components\Support\Exception\DirectoryCreateException;
 use Components\Support\TemplateCompiler;
 use PHPUnit\Framework\TestCase;
 
@@ -15,7 +16,7 @@ final class TemplateCompilerTest extends TestCase
     {
         $this->tmp = sys_get_temp_dir().'/hot-ui-compiler-'.uniqid();
         if (! is_dir($this->tmp) && ! mkdir($this->tmp, 0o775, true) && ! is_dir($this->tmp)) {
-            throw new \RuntimeException("Unable to create [$this->tmp]");
+            throw new DirectoryCreateException($this->tmp);
         }
     }
 
@@ -46,7 +47,7 @@ final class TemplateCompilerTest extends TestCase
     public function testReusesArtifactWhileSourceIsUnchanged(): void
     {
         if (! is_dir($this->sourceDir()) && ! mkdir($this->sourceDir(), 0o775, true)) {
-            throw new \RuntimeException("Unable to create [{$this->sourceDir()}]");
+            throw new DirectoryCreateException($this->sourceDir());
         }
         $source = $this->sourceDir().'/page.php';
         $compiler = new TemplateCompiler($this->cacheDir());
@@ -66,7 +67,7 @@ final class TemplateCompilerTest extends TestCase
     public function testChangedSourceProducesADifferentArtifact(): void
     {
         if (! is_dir($this->sourceDir()) && ! mkdir($this->sourceDir(), 0o775, true)) {
-            throw new \RuntimeException("Unable to create [{$this->sourceDir()}]");
+            throw new DirectoryCreateException($this->sourceDir());
         }
         $source = $this->sourceDir().'/page.php';
         $compiler = new TemplateCompiler($this->cacheDir());
@@ -84,7 +85,7 @@ final class TemplateCompilerTest extends TestCase
     public function testTamperedOrForeignArtifactIsDiscardedAndRecompiled(): void
     {
         if (! is_dir($this->sourceDir()) && ! mkdir($this->sourceDir(), 0o775, true)) {
-            throw new \RuntimeException("Unable to create [{$this->sourceDir()}]");
+            throw new DirectoryCreateException($this->sourceDir());
         }
         $source = $this->sourceDir().'/page.php';
         $compiler = new TemplateCompiler($this->cacheDir());
@@ -106,7 +107,7 @@ final class TemplateCompilerTest extends TestCase
     public function testPureHtmlSourceGetsNeutralStamp(): void
     {
         if (! is_dir($this->sourceDir()) && ! mkdir($this->sourceDir(), 0o775, true)) {
-            throw new \RuntimeException("Unable to create [{$this->sourceDir()}]");
+            throw new DirectoryCreateException($this->sourceDir());
         }
         $source = $this->sourceDir().'/bare.html.php';
         $compiler = new TemplateCompiler($this->cacheDir());
@@ -118,5 +119,13 @@ final class TemplateCompilerTest extends TestCase
 
         self::assertMatchesRegularExpression('/<\?php \/\* hotui:[0-9a-f]{40} \*\/ \?>/', $content);
         self::assertStringContainsString('<!DOCTYPE html>', $content);
+    }
+
+    public function testCompileThrowsTemplateNotFoundExceptionWhenSourceMissing(): void
+    {
+        $compiler = new TemplateCompiler($this->cacheDir());
+
+        $this->expectException(\Components\Support\Exception\TemplateNotFoundException::class);
+        $compiler->compile('/nonexistent/path/source.php');
     }
 }

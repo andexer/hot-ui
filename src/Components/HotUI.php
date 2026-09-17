@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Components;
 
+use Components\Support\Exception\UnknownGroupException;
+use Components\Exception\UnresolvedDirectoryException;
 use Components\Support\Assets;
 use Components\Support\Views;
 
@@ -25,7 +27,7 @@ use Components\Support\Views;
  */
 final class HotUI
 {
-    public const VERSION = '0.12.1';
+    public const VERSION = '0.14.0';
 
     /** @var list<string> Groups publishViews() can copy on their own. */
     private const VIEW_GROUPS = ['components', 'layouts', 'partials'];
@@ -120,7 +122,7 @@ final class HotUI
     {
         $cwd = getcwd();
         if ($cwd === false) {
-            throw new \RuntimeException('Unable to resolve the working directory.');
+            throw new UnresolvedDirectoryException('working directory', 'Unable to resolve the working directory.');
         }
 
         $candidates = ['public', 'public_html', 'web', 'www', 'html'];
@@ -131,7 +133,7 @@ final class HotUI
             }
         }
 
-        throw new \RuntimeException(sprintf(
+        throw new UnresolvedDirectoryException('web root', sprintf(
             'HotUI::autoPublish() could not find a web root. Looked for %s under [%s]; pass the directory explicitly.',
             implode(', ', array_map(static fn (string $candidate): string => '/'.$candidate, $candidates)),
             $cwd,
@@ -160,7 +162,7 @@ final class HotUI
         if ($only !== null) {
             foreach ($only as $group) {
                 if (! in_array($group, self::VIEW_GROUPS, true)) {
-                    throw new \InvalidArgumentException(sprintf('Unknown views group [%s].', $group));
+                    throw new UnknownGroupException('views', $group);
                 }
             }
         }
@@ -169,7 +171,7 @@ final class HotUI
             ? rtrim(APPPATH, '/\\').'/Views'
             : (getcwd() !== false ? getcwd().'/app/Views' : null);
         if ($viewDir === null) {
-            throw new \RuntimeException('HotUI::publishViews() could not resolve a views directory; pass it explicitly.');
+            throw new UnresolvedDirectoryException('views directory', 'HotUI::publishViews() could not resolve a views directory; pass it explicitly.');
         }
 
         return Views::publish($viewDir, $only);

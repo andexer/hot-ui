@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Components;
 
 use Components\Exception\ComponentNotFoundException;
+use Components\Exception\MissingDirectoryException;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
@@ -113,7 +114,7 @@ final class ComponentRegistry
     private function scan(string $ns, string $path): void
     {
         if (! is_dir($path)) {
-            throw new \RuntimeException(sprintf('Component directory [%s] does not exist.', $path));
+            throw new MissingDirectoryException($path, 'component directory');
         }
 
         $iterator = new RecursiveIteratorIterator(

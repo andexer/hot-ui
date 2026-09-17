@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Components\Support;
 
+use Components\Support\Exception\CompiledTemplateNotFoundException;
+use Components\Support\Exception\TemplateNotFoundException;
+use Components\Support\Exception\UnknownTemplateNamespaceException;
 use Components\Ui;
 
 /**
@@ -88,7 +91,7 @@ final class TemplateRenderer
     {
         $real = realpath($path);
         if ($real === false || ! is_file($real)) {
-            throw new \RuntimeException(sprintf('Compiled template [%s] not found.', $path));
+            throw new CompiledTemplateNotFoundException($path);
         }
         unset($path);
 
@@ -153,7 +156,7 @@ final class TemplateRenderer
             $ns = substr($name, 0, $separator);
             $base = $this->folders[$ns] ?? null;
             if ($base === null) {
-                throw new \RuntimeException(sprintf('Unknown template namespace [%s] in [%s].', $ns, $name));
+                throw new UnknownTemplateNamespaceException($ns, $name);
             }
             $relative = substr($name, $separator + 2);
         } else {
@@ -169,7 +172,7 @@ final class TemplateRenderer
         $realBase = realpath($base);
         $realPath = realpath($path);
         if ($realPath === false || $realBase === false || ! str_starts_with($realPath, $realBase.DIRECTORY_SEPARATOR)) {
-            throw new \RuntimeException(sprintf('Template [%s] not found (resolved to [%s]).', $name, $path));
+            throw TemplateNotFoundException::forTemplate($name, $path);
         }
 
         return $realPath;

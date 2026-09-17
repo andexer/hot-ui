@@ -25,6 +25,12 @@ use Components\Hotfire\Engine;
  *
  *   // app/Config/Filters.php
  *   public array $globals = ['except' => ['csrf', 'hot-ui/update']];
+ *
+ * Failures answer with the status that describes them (see HotfireStatus): 413
+ * for a payload too large, 422 for a client payload the server can never
+ * accept, 404 for a component that does not exist, 500 when the server itself
+ * cannot comply. Server faults are logged even outside production, so a bug
+ * never disappears as a bare 500.
  */
 final class HotfireController extends Controller
 {
@@ -44,16 +50,32 @@ final class HotfireController extends Controller
             || ! is_array($body['snapshot'])
             || ! is_array($body['action'])
         ) {
-            return $this->json([])->setStatusCode(422);
+            // Same body shape as every other failure: {error}, never an empty
+            // object the driver cannot tell apart from a successful payload.
+            return $this->json(['error' => 'Hotfire: request must carry a snapshot and an action.'])
+                ->setStatusCode(422);
         }
 
         try {
             $payload = Engine::call($body['snapshot'], $body['action'], $this->endpoint());
         } catch (\Throwable $exception) {
-            return $this->json(['error' => $this->publicMessage($exception)])->setStatusCode(422);
+            return $this->failure($exception);
         }
 
         return $this->json($payload);
+    }
+
+    /**
+     * Answers a failed round-trip with the status its cause deserves. A client
+     * mistake keeps the exception text in development; a server fault is
+     * logged even there, so the cause is never lost.
+     */
+    private function failure(\Throwable $exception): ResponseInterface
+    {
+        $status = HotfireStatus::for($exception);
+
+        return $this->json(['error' => $this->publicMessage($exception, $status >= 500)])
+            ->setStatusCode($status);
     }
 
     /**
@@ -61,10 +83,10 @@ final class HotfireController extends Controller
      * leak stack traces, paths and internals); the full error is logged and a
      * generic message returned instead.
      */
-    private function publicMessage(\Throwable $exception): string
+    private function publicMessage(\Throwable $exception, bool $serverFault): string
     {
         $production = defined('ENVIRONMENT') && ENVIRONMENT === 'production';
-        if ($production) {
+        if ($production || $serverFault) {
             if (function_exists('log_message')) {
                 log_message(
                     'error',
@@ -77,11 +99,9 @@ final class HotfireController extends Controller
                     ],
                 );
             }
-
-            return 'Hotfire: the component could not be updated.';
         }
 
-        return $exception->getMessage();
+        return $production ? 'Hotfire: the component could not be updated.' : $exception->getMessage();
     }
 
     /** Resolves the configured endpoint to a usable URL. */

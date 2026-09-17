@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Components\Tests;
 
+use Components\Support\Exception\DirectoryCreateException;
 use Components\Support\Filesystem;
 use Components\Ui;
 use PHPUnit\Framework\TestCase;
@@ -23,7 +24,7 @@ final class ViewSyntaxTest extends TestCase
         foreach (['ui', 'blocks'] as $ns) {
             $dir = $this->root.'/components/'.$ns;
             if (! Filesystem::ensureDirectory($dir)) {
-                throw new \RuntimeException(sprintf('Unable to create [%s].', $dir));
+                throw new DirectoryCreateException($dir);
             }
         }
 

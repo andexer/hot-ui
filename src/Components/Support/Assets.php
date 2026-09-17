@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Components\Support;
 
+use Components\Support\Exception\DirectoryCreateException;
+use Components\Support\Exception\FileCopyException;
+use Components\Support\Exception\UnknownGroupException;
 use CallbackFilterIterator;
 use FilesystemIterator;
 use RecursiveDirectoryIterator;
@@ -33,7 +36,7 @@ final class Assets
             return rtrim($root, '/');
         }
         if (! in_array($group, self::GROUPS, true)) {
-            throw new \InvalidArgumentException(sprintf('Unknown asset group [%s]; expected css or js.', $group));
+            throw new UnknownGroupException('asset', $group, self::GROUPS);
         }
 
         return rtrim($root.$group, '/');
@@ -55,7 +58,7 @@ final class Assets
         $groups = $only ?? self::GROUPS;
         foreach ($groups as $group) {
             if (! in_array($group, self::GROUPS, true)) {
-                throw new \InvalidArgumentException(sprintf('Unknown asset group [%s].', $group));
+                throw new UnknownGroupException('asset', $group);
             }
         }
 
@@ -86,7 +89,9 @@ final class Assets
 
                 $destination = $destinationDir.'/'.$relative;
                 self::ensureDirectory(dirname($destination));
-                copy($file->getPathname(), $destination);
+                if (! copy($file->getPathname(), $destination)) {
+                    throw new FileCopyException($file->getPathname(), $destination);
+                }
                 ++$count;
             }
 
@@ -98,8 +103,8 @@ final class Assets
 
     private static function ensureDirectory(string $directory): void
     {
-        if (! is_dir($directory) && ! mkdir($concreteDirectory = $directory, 0o775, true) && ! is_dir($concreteDirectory)) {
-            throw new \RuntimeException(sprintf('Unable to create directory [%s].', $concreteDirectory));
+        if (! Filesystem::ensureDirectory($directory)) {
+            throw new DirectoryCreateException($directory);
         }
     }
 }

@@ -10,4 +10,5 @@ Thumbs.db
 /.agents/
 /.claude/
 /.docgen/
+/.freebuff/
 /skills-lock.json

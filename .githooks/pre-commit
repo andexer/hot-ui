@@ -1,0 +1,60 @@
+#!/bin/sh
+#
+# Hot-UI pre-commit gate: runs the house lint on the PHP files staged for this
+# commit, so a violation never reaches CI.
+#
+# Install it once per clone with `composer hooks` (which points core.hooksPath
+# at .githooks/) and commit normally afterwards. Intentional bypass:
+#
+#   git commit --no-verify
+#
+# The hook stays out of the way whenever it cannot help: outside a repository,
+# no php on PATH, no bin/lint.php (a host project vendoring the package), no
+# staged PHP, or a merge/rebase/cherry-pick in progress.
+#
+# Written for POSIX sh (no bashisms) so it behaves the same under GNU/Linux,
+# macOS and the sh bundled with Git for Windows.
+
+set -eu
+
+linter="bin/lint.php"
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$root"
+
+# A commit produced by a mid-operation is not the author's own work: never
+# block it, whatever the staged tree looks like.
+gitdir=$(git rev-parse --git-dir)
+for state in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD rebase-merge rebase-apply; do
+    if [ -e "$gitdir/$state" ]; then
+        exit 0
+    fi
+done
+
+if [ ! -f "$linter" ]; then
+    echo "pre-commit: $linter not found, skipping the Hot-UI lint." >&2
+    exit 0
+fi
+
+php=$(command -v php || true)
+if [ -z "$php" ]; then
+    echo "pre-commit: php not found on PATH, skipping the Hot-UI lint." >&2
+    exit 0
+fi
+
+# Added, copied, modified and renamed files only: a deleted file has no rules
+# to break. -z keeps paths with spaces intact through xargs.
+if [ -z "$(git diff --cached --name-only --diff-filter=ACMR -- '*.php')" ]; then
+    exit 0
+fi
+
+if ! git diff --cached --name-only --diff-filter=ACMR -z -- '*.php' | xargs -0 "$php" "$linter"; then
+    cat >&2 <<'EOF'
+
+pre-commit: the staged PHP breaks the house rules
+(.agents/skills/php-best-practices) — see the violations above.
+`composer lint` checks the whole package. To commit anyway, deliberately:
+    git commit --no-verify
+EOF
+    exit 1
+fi

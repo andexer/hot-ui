@@ -7,6 +7,7 @@ namespace Components\Commands;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 use Components\Ci4\Ci4;
+use Components\Commands\Exception\InvalidPublishTargetException;
 use Components\Hotfire\Config;
 use Throwable;
 
@@ -86,7 +87,7 @@ final class PublishCommand extends BaseCommand
         }
 
         if (! in_array($which, ['assets', 'views', 'both'], true)) {
-            throw new \InvalidArgumentException(sprintf('Invalid target [%s]; use assets, views or both.', $which));
+            throw new InvalidPublishTargetException($which);
         }
 
         return $which;

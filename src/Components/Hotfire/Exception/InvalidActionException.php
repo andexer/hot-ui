@@ -53,6 +53,16 @@ final class InvalidActionException extends \RuntimeException implements HotfireE
         );
     }
 
+    /** Action method arguments were invalid, wrong type, or wrong count. */
+    public static function invalidArguments(string $componentClass, string $method, string $reason): self
+    {
+        return new self(
+            sprintf('Hotfire: invalid arguments for action [%s] of %s: %s', $method, $componentClass, $reason),
+            $method,
+            $componentClass,
+        );
+    }
+
     /** The property or method name the client tried to run. */
     public function getAction(): string
     {

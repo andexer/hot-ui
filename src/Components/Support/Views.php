@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Components\Support;
 
+use Components\Support\Exception\DirectoryCreateException;
+use Components\Support\Exception\FileCopyException;
+use Components\Support\Exception\UnknownGroupException;
 use CallbackFilterIterator;
 use FilesystemIterator;
 use RecursiveDirectoryIterator;
@@ -40,7 +43,7 @@ final class Views
             return $root;
         }
         if (! in_array($group, self::GROUPS, true)) {
-            throw new \InvalidArgumentException(sprintf('Unknown views group [%s]; expected components, layouts or partials.', $group));
+            throw new UnknownGroupException('views', $group, self::GROUPS);
         }
 
         return $root.'/'.$group;
@@ -63,7 +66,7 @@ final class Views
         $groups = $only ?? self::GROUPS;
         foreach ($groups as $group) {
             if (! in_array($group, self::GROUPS, true)) {
-                throw new \InvalidArgumentException(sprintf('Unknown views group [%s].', $group));
+                throw new UnknownGroupException('views', $group);
             }
         }
 
@@ -88,7 +91,9 @@ final class Views
 
                 $destination = $destinationDir.'/'.$relative;
                 self::ensureDirectory(dirname($destination));
-                copy($file->getPathname(), $destination);
+                if (! copy($file->getPathname(), $destination)) {
+                    throw new FileCopyException($file->getPathname(), $destination);
+                }
                 ++$count;
             }
 
@@ -101,7 +106,7 @@ final class Views
     private static function ensureDirectory(string $directory): void
     {
         if (! Filesystem::ensureDirectory($directory)) {
-            throw new \RuntimeException(sprintf('Unable to create directory [%s].', $directory));
+            throw new DirectoryCreateException($directory);
         }
     }
 }

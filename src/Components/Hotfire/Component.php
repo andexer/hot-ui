@@ -83,6 +83,10 @@ abstract class Component
             if (str_starts_with($name, '__')) {
                 continue;
             }
+            if (! $property->isInitialized($this)) {
+                $state[$name] = null;
+                continue;
+            }
             $state[$name] = $this->{$name};
         }
 
@@ -108,6 +112,9 @@ abstract class Component
                 continue;
             }
             if ($reflection->isPublic() && ! $reflection->isStatic()) {
+                if ($value === null && $reflection->hasType() && ! $reflection->getType()?->allowsNull()) {
+                    continue;
+                }
                 $this->{$name} = $value;
             }
         }

@@ -94,7 +94,11 @@ final class Engine
             if (! self::isModelProperty($component, $property, $state)) {
                 throw InvalidActionException::notAStateProperty($class, $property);
             }
-            $component->{$property} = self::castValue($component, $property, $action['value'] ?? null);
+            try {
+                $component->{$property} = self::castValue($component, $property, $action['value'] ?? null);
+            } catch (\TypeError) {
+                throw InvalidActionException::notAStateProperty($class, $property);
+            }
             $component->notifyUpdated($property);
         } elseif ($name !== 'poll') {
             $method = (string) ($action['method'] ?? '');
@@ -104,7 +108,12 @@ final class Engine
             if (! method_exists($component, $method) || ! (new \ReflectionMethod($component, $method))->isPublic()) {
                 throw InvalidActionException::notAPublicMethod($class, $method);
             }
-            $component->{$method}(...((array) ($action['params'] ?? [])));
+            $params = array_values((array) ($action['params'] ?? []));
+            try {
+                $component->{$method}(...$params);
+            } catch (\TypeError | \ArgumentCountError $error) {
+                throw InvalidActionException::invalidArguments($class, $method, $error->getMessage());
+            }
         }
 
         return self::render($component, $actionUrl, $key, $ui, $config);
@@ -185,10 +194,15 @@ final class Engine
             return $value;
         }
 
+        if ($value === null && $type?->allowsNull()) {
+            return null;
+        }
+
         return match (strtolower((string) $type?->getName())) {
             'int' => is_numeric($value) ? (int) $value : 0,
             'float' => is_numeric($value) ? (float) $value : 0.0,
             'bool' => in_array($value, [true, 'true', 1, '1', 'on', 'yes'], true),
+            'string' => is_scalar($value) || $value === null ? (string) $value : '',
             default => $value,
         };
     }

@@ -8,7 +8,7 @@ namespace Components\Exception;
  * Thrown when a component name cannot be resolved, optionally listing known
  * candidates to speed up typo hunting.
  */
-final class ComponentNotFoundException extends \RuntimeException
+final class ComponentNotFoundException extends \RuntimeException implements HotUiException
 {
     /**
      * @param string      $requested  The unresolved component name.

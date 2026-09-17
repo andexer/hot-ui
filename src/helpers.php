@@ -7,6 +7,7 @@ declare(strict_types=1);
  * they are callable directly inside component templates and host apps.
  */
 
+use Components\Exception\ReservedPropertyNameException;
 use Components\Support\Js;
 use Components\Support\RenderContext;
 use Components\Support\Slot;
@@ -76,7 +77,7 @@ function js(mixed $value): string
  *
  * @return array<string, mixed> Values meant to be extract()ed.
  *
- * @throws InvalidArgumentException When a default collides with a reserved variable.
+ * @throws ReservedPropertyNameException When a default collides with a reserved variable.
  */
 function props(RenderContext $ctx, array $defaults = []): array
 {
@@ -86,10 +87,7 @@ function props(RenderContext $ctx, array $defaults = []): array
 
     foreach ($defaults as $key => $default) {
         if (in_array($key, $reserved, true)) {
-            throw new InvalidArgumentException(sprintf(
-                'Prop [%s] collides with a reserved template variable.',
-                $key,
-            ));
+            throw new ReservedPropertyNameException($key);
         }
 
         $declared[] = $key;

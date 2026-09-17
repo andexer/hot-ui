@@ -269,7 +269,8 @@ Fuente en `views/examples/`, guía en [`docs/ejemplos.md`](docs/ejemplos.md).
 ## Verificación
 
 ```bash
-composer lint      # reglas de la casa: sin @, strict_types, tipos de retorno
+composer hooks     # activa el pre-commit (lint de lo staged) — una vez por clon
+composer lint      # reglas de la casa: sin @, strict_types, firmas tipadas, excepciones de dominio (nunca SPL genérica)
 composer test      # PHPUnit
 composer smoke     # 384/384 renderizan
 composer examples  # valida login, dashboard y blog

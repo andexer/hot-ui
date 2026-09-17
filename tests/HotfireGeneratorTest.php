@@ -216,4 +216,18 @@ PHP;
             self::assertTrue(true);
         }
     }
+
+    public function testPropsRejectsReservedNames(): void
+    {
+        $generator = new ComponentGenerator('/views', 'App\\Components');
+
+        foreach (['view', 'component'] as $reserved) {
+            try {
+                $generator->props($reserved);
+                self::fail('Expected InvalidArgumentException for reserved property '.$reserved);
+            } catch (InvalidArgumentException) {
+                self::assertTrue(true);
+            }
+        }
+    }
 }

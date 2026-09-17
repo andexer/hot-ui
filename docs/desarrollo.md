@@ -16,7 +16,8 @@ npm install
 
 | Comando | Qué hace |
 |---|---|
-| `composer lint` | reglas mecánicas de `.agents/skills/php-best-practices`: sin `@` de supresión, `strict_types` en todo archivo, tipo de retorno en toda firma |
+| `composer hooks` | activa el pre-commit de este clon (`core.hooksPath = .githooks`); `--status` informa, `--uninstall` lo desactiva |
+| `composer lint` | reglas mecánicas de `.agents/skills/php-best-practices`: sin `@` de supresión, `strict_types` en todo archivo, tipo de retorno en toda firma, tipo en todo parámetro, ninguna excepción SPL genérica lanzada (ni construida bajo `src/`) y toda clase de excepción del paquete implementando un marcador de familia |
 | `composer test` | suite PHPUnit del núcleo PHP (AttributeBag, TailwindMerge, TemplateRenderer, Ui…) |
 | `composer smoke` | renderiza los 384 componentes y valida salida |
 | `composer examples` | renderiza login/dashboard/blog y valida sus páginas |
@@ -52,7 +53,35 @@ docs/*.md                documentación del proyecto (español)
 2. **Cambios de comportamiento**: edita el `.ts`; `npm run dev` regenera el
    bundle `js/app.js` mientras pruebas en la demo o en un host.
 3. **Componente nuevo**: sigue `docs/guia-componentes.md`.
-4. **Antes de commit**: `composer lint && composer test && composer smoke && npm run typecheck && npm run build` — `build` regenera `js/app.js` (bundle) y `css/hot-ui.min.css`; commitea ambos (son lo que se distribuye; el publicador copia `js/app.js`, nunca `js/src/`).
+4. **Antes de commit**: `composer hooks` una vez por clon deja el **pre-commit**
+   corriendo el lint sobre los PHP que entran en el commit, así que una
+   violación no llega a CI; el resto de la batería sigue siendo manual:
+   `composer test && composer smoke && npm run typecheck && npm run build`.
+   `build` regenera `js/app.js` (bundle) y `css/hot-ui.min.css`; commitea ambos
+   (son lo que se distribuye; el publicador copia `js/app.js`, nunca `js/src/`).
+
+## El pre-commit
+
+`.githooks/pre-commit` es un script POSIX `sh` versionado (funciona igual en
+GNU/Linux, macOS y la `sh` que trae Git for Windows). `composer hooks` apunta el
+`core.hooksPath` **local** del clon a `.githooks/`: los hooks no viajan en el
+repositorio, así que un clon nuevo queda sin ellos hasta que alguien los activa,
+ningún proyecto que instale el paquete los hereda, y el instalador nunca pisa un
+`core.hooksPath` ajeno (si el valor actual es otro, `--uninstall` lo deja intacto).
+
+Antes de cada commit el hook lincea **solo los PHP añadidos, copiados, modificados
+o renombrados** de ese commit (los borrados no tienen reglas que romper, y los
+paths con espacios viajan seguros por `xargs -0`). Si algo falla imprime las
+violaciones y rechaza el commit, indicando cómo saltarlo a propósito:
+
+```bash
+git commit --no-verify
+```
+
+Se aparta cuando no puede ayudar: fuera de un repositorio, sin `php` en el `PATH`,
+sin `bin/lint.php` (un host que solo consume el paquete), sin PHP en el stage o
+con un merge/rebase/cherry-pick en curso. El lint completo y el resto de la
+batería siguen corriendo en CI como red de seguridad.
 
 ## Consumo desde una aplicación externa
 

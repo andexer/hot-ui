@@ -65,7 +65,17 @@ final class Snapshot
             throw InvalidSnapshotException::checksumMismatch();
         }
 
-        $decoded = json_decode((string) base64_decode($payload, true), true, 512, JSON_THROW_ON_ERROR);
+        $raw = base64_decode($payload, true);
+        if ($raw === false) {
+            throw InvalidSnapshotException::malformed();
+        }
+
+        try {
+            $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw InvalidSnapshotException::notValid();
+        }
+
         if (! is_array($decoded) || ($decoded['v'] ?? null) !== self::VERSION || ! is_array($decoded['s'] ?? null)) {
             throw InvalidSnapshotException::notValid();
         }

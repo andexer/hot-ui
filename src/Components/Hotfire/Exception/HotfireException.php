@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace Components\Hotfire\Exception;
 
+use Components\Exception\HotUiException;
+
 /**
  * Marker for every error the Hotfire layer raises (house rule 5.1).
+ *
+ * It narrows Components\Exception\HotUiException, so the package-wide marker
+ * also catches Hotfire failures.
  *
  * Callers can catch the whole family with one type:
  *
@@ -27,6 +32,6 @@ namespace Components\Hotfire\Exception;
  *     MissingSnapshotKeyException, UnknownComponentException,
  *     InvalidActionException, StubTemplateNotFoundException
  */
-interface HotfireException extends \Throwable
+interface HotfireException extends HotUiException
 {
 }

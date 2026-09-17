@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Components\Tests;
 
 use Components\Ci4\Ci4;
+use Components\Support\Exception\DirectoryCreateException;
 use Components\HotUI;
 use Components\Support\Assets;
 use Components\Ui;
@@ -59,6 +60,11 @@ final class PackageIntegrationTest extends TestCase
         self::assertTrue(function_exists('js'));
         self::assertTrue(function_exists('safe_url'));
         self::assertNotNull(HotUI::shared());
+    }
+
+    public function testPackageVersionMatchesExpected(): void
+    {
+        self::assertSame('0.14.0', HotUI::VERSION);
     }
 
     public function testSharedAndInstanceRenderTheSamePage(): void
@@ -344,7 +350,7 @@ PHP);
     {
         $dir = $root.'/components/'.$ns;
         if (! is_dir($dir) && ! mkdir($dir, 0o775, true) && ! is_dir($dir)) {
-            throw new \RuntimeException("Unable to create [$dir]");
+            throw new DirectoryCreateException($dir);
         }
         file_put_contents($dir.'/'.$name.'.php', $body);
     }

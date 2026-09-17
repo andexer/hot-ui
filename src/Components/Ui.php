@@ -6,6 +6,11 @@ namespace Components;
 
 use Closure;
 use Components\Exception\ComponentNotFoundException;
+use Components\Exception\MissingComponentNamespaceException;
+use Components\Exception\MissingDirectoryException;
+use Components\Support\Exception\TemplateNotFoundException;
+use Components\Exception\UiPipelineException;
+use Components\Exception\UnsupportedPositionalArgumentException;
 use Components\Support\RenderContext;
 use Components\Support\Slot;
 use Components\Support\TemplateCompiler;
@@ -50,7 +55,7 @@ final class Ui
         $componentsDir = $root.'/components';
 
         if (! is_dir($componentsDir)) {
-            throw new \RuntimeException(sprintf('Components directory [%s] does not exist.', $componentsDir));
+            throw new MissingDirectoryException($componentsDir);
         }
 
         $namespaces = [];
@@ -60,7 +65,7 @@ final class Ui
             }
         }
         if ($namespaces === []) {
-            throw new \RuntimeException(sprintf('No component namespaces found inside [%s].', $componentsDir));
+            throw new MissingComponentNamespaceException($componentsDir);
         }
 
         $this->viewsRoot = $root;
@@ -229,7 +234,7 @@ final class Ui
     public function into(?string $slot = null): void
     {
         if ($this->stream === []) {
-            throw new \LogicException('into() called without a matching open().');
+            throw UiPipelineException::withoutOpen('into');
         }
 
         $index = count($this->stream) - 1;
@@ -250,7 +255,7 @@ final class Ui
     public function close(): string
     {
         if ($this->stream === []) {
-            throw new \LogicException('close() called without a matching open().');
+            throw UiPipelineException::withoutOpen('close');
         }
 
         /** @var array{name: string, entry: array{ns: string, template: string}, props: array<string, mixed>, buckets: array<string, string>, current: string} $frame */
@@ -290,7 +295,7 @@ final class Ui
     public static function publishShared(array $values): void
     {
         if (self::$stack === []) {
-            throw new \LogicException('share() can only be called while rendering a template.');
+            throw UiPipelineException::outsideRender('share');
         }
 
         self::$stack[count(self::$stack) - 1]->shared += $values;
@@ -333,11 +338,7 @@ final class Ui
         $realBase = realpath($base);
         $realPath = realpath($path);
         if ($realPath === false || $realBase === false || ! str_starts_with($realPath, $realBase.DIRECTORY_SEPARATOR)) {
-            throw new \RuntimeException(sprintf(
-                'View [%s] not found (resolved to [%s]). Pass the base path when the page lives elsewhere.',
-                $template,
-                $path,
-            ));
+            throw TemplateNotFoundException::forView($template, $path);
         }
 
         return $realPath;
@@ -409,11 +410,7 @@ final class Ui
                 continue;
             }
 
-            throw new \InvalidArgumentException(sprintf(
-                'Unsupported positional argument #%d of type [%s]; pass arrays, strings or closures.',
-                $key,
-                get_debug_type($value),
-            ));
+            throw new UnsupportedPositionalArgumentException($key, get_debug_type($value));
         }
 
         return [$props, $slotParts, $named];

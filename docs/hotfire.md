@@ -294,6 +294,25 @@ Config::setShared(new Config(
 State never lives in the session: it travels signed in the DOM, so multiple
 tabs and horizontal scaling work exactly like the pattern they're inspired by.
 
+### What a failure answers
+
+A round-trip that cannot be served is answered with the status its cause
+deserves, so the driver and the logs can tell a client mistake from a broken
+deployment (`Components\Ci4\Http\HotfireStatus` holds the mapping, free of
+CodeIgniter and unit-tested):
+
+| Status | Cause | Exceptions |
+|---|---|---|
+| `413` | too large to accept | request body over 128 KB; snapshot payload over 64 KB (`SnapshotFailure::TooLarge`) |
+| `422` | the client sent something the server can never accept | malformed, tampered or unknown-version snapshot; reserved/non-public action; property outside the signed state; garbled component name |
+| `404` | what it asked for does not exist | unknown component class, unresolved component name |
+| `500` | the server cannot comply | view that will not compile, missing template or views root, unwritable cache, no signing key configured, or any failure outside the package |
+
+`InvalidSnapshotException::getFailure()` returns the machine-readable kind
+(`SnapshotFailure`), while `getReason()` stays the human detail for logs. Server
+faults are logged even outside production, so a `500` never hides its cause;
+the body is `{error}` in every case, and in production the text is generic.
+
 ### Security
 
 - Snapshots are signed with HMAC-SHA256 using the configured key; tampered
@@ -313,6 +332,7 @@ tabs and horizontal scaling work exactly like the pattern they're inspired by.
 | `Components\Hotfire\Engine` | `render()`, `call()`, `fragment()` | Orchestrates render + round-trip |
 | `Components\Hotfire\HtmlTransform` | `apply()` | Passes `hot:*` → `data-hot-*` |
 | `Components\Ci4\Http\HotfireController` | `update()` | POST round-trip endpoint |
+| `Components\Ci4\Http\HotfireStatus` | `for()` | Maps a round-trip failure to its HTTP status |
 | `Ci4::hotfire($component)` | — | Renders the driver-ready fragment |
 
 ### Errors
@@ -321,7 +341,11 @@ Every failure the layer raises implements
 `Components\Hotfire\Exception\HotfireException`, so one catch covers the whole
 family, while each class still extends the SPL exception matching its nature
 (so existing `catch (\InvalidArgumentException|\RuntimeException)` code and the
-generated tests keep working):
+generated tests keep working). `HotfireException` in turn narrows
+`Components\Exception\HotUiException`, the package-wide marker — as
+`SupportException` (template engine, tag compiler, publishers) and
+`CommandException` (spark commands) do for their layers — so a single
+`catch (HotUiException)` covers every layer of the package:
 
 | Exception | Base | Raised when |
 |---|---|---|
@@ -330,7 +354,7 @@ generated tests keep working):
 | `InvalidComponentPropertyException` | `InvalidArgumentException` | a scaffold property (`--props`) is not a plain identifier |
 | `InvalidNamespaceException` | `InvalidArgumentException` | the generated class root namespace is invalid |
 | `MissingViewsRootException` | `InvalidArgumentException` | discovery or the console cannot resolve a views root |
-| `InvalidSnapshotException` | `InvalidArgumentException` | the signed payload is malformed, oversized or tampered (`getReason()`) |
+| `InvalidSnapshotException` | `InvalidArgumentException` | the signed payload is malformed, oversized or tampered (`getFailure()` for the kind, `getReason()` for logs) |
 | `MissingSnapshotKeyException` | `RuntimeException` | no snapshot signing key is configured |
 | `UnknownComponentException` | `RuntimeException` | a snapshot names a class that is not a Hotfire component |
 | `InvalidActionException` | `RuntimeException` | the action is reserved, not public, or not signed state (`getAction()`) |
@@ -340,12 +364,15 @@ generated tests keep working):
 ```php
 try {
     $payload = Engine::call($snapshot, $action);
-} catch (InvalidSnapshotException $exception) {
-    log_message('warning', 'Hotfire rejected state: '.$exception->getReason());
-
-    return $this->response->setStatusCode(422);
 } catch (HotfireException $exception) {
-    // any other Hotfire failure, family-wide
+    log_message('warning', '[Hotfire] '.$exception->getMessage());
+
+    return $this->response->setStatusCode(HotfireStatus::for($exception));
+} catch (\Throwable $exception) {
+    // A bug, not a verdict on the request: 500, and always logged.
+    log_message('error', '[Hotfire] '.$exception->getMessage());
+
+    return $this->response->setStatusCode(500);
 }
 ```
 

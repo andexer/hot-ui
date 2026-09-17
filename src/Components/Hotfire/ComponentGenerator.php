@@ -34,6 +34,8 @@ use Components\Hotfire\Exception\StubTemplateNotFoundException;
  */
 final class ComponentGenerator
 {
+    private const RESERVED_PROPS = ['view', 'component'];
+
     private readonly ComponentPaths $paths;
 
     /**
@@ -166,7 +168,7 @@ final class ComponentGenerator
             if ($prop === '') {
                 continue;
             }
-            if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $prop)) {
+            if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $prop) || in_array($prop, self::RESERVED_PROPS, true)) {
                 throw new InvalidComponentPropertyException($prop);
             }
             $out[] = $prop;

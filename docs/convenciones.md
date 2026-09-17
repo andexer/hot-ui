@@ -42,7 +42,8 @@ Sustituye al antiguo CONVENTIONS.md. Estas reglas rigen todo el código nuevo.
 ## Comandos
 
 ```bash
-composer lint        # reglas de la casa (sin @, strict_types, tipos de retorno)
+composer hooks       # activa el pre-commit (lint de lo staged), una vez por clon
+composer lint        # reglas de la casa (sin @, strict_types, firmas tipadas, excepciones de dominio con marcador)
 composer test        # PHPUnit
 composer smoke       # render 384 componentes
 npm run dev          # tsc --watch

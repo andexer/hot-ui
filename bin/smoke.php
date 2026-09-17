@@ -40,10 +40,7 @@ foreach ($names as $name) {
 
     try {
         $args = [$PAYLOADS[$name] ?? []];
-        $html = $ui->renderComponent($name, $args);
-        if (! is_string($html)) {
-            throw new RuntimeException('Renderer returned non-string');
-        }
+        $ui->renderComponent($name, $args);
         ++$passed;
     } catch (Throwable $e) {
         $failed[$name] = $e->getMessage();

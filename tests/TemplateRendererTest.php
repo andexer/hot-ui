@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Components\Tests;
 
+use Components\Support\Exception\DirectoryCreateException;
 use Components\Ui;
 use PHPUnit\Framework\TestCase;
 
@@ -17,18 +18,18 @@ final class TemplateRendererTest extends TestCase
         $this->tmp = sys_get_temp_dir().'/hot-ui-renderer-'.uniqid();
         $root = $this->tmp.'/views';
         if (! is_dir($root) && ! mkdir($root, 0o775, true) && ! is_dir($root)) {
-            throw new \RuntimeException("Unable to create [$root]");
+            throw new DirectoryCreateException($root);
         }
 
         foreach (['ui', 'blocks'] as $ns) {
             $dir = $root.'/components/'.$ns;
             if (! is_dir($dir) && ! mkdir($dir, 0o775, true) && ! is_dir($dir)) {
-                throw new \RuntimeException("Unable to create [$dir]");
+                throw new DirectoryCreateException($dir);
             }
         }
         $sub = $root.'/sub';
         if (! is_dir($sub) && ! mkdir($sub, 0o775, true) && ! is_dir($sub)) {
-            throw new \RuntimeException("Unable to create [$sub]");
+            throw new DirectoryCreateException($sub);
         }
 
         file_put_contents($root.'/components/ui/greet.php', <<<'PHP'

@@ -31,6 +31,10 @@ final class HotfireTest extends TestCase
             <div hot:poll="5000"></div>
             PHP,
         );
+        file_put_contents(
+            $views.'/typed-component.php',
+            '<span><?= $component->total ?></span>',
+        );
     }
 
     protected function tearDown(): void
@@ -278,5 +282,70 @@ final class HotfireTest extends TestCase
 
         $config = new Config(directives: ['go' => 'go']);
         self::assertStringContainsString('data-hot-go="run"', HtmlTransform::apply($html, $config));
+    }
+
+    public function testUninitializedTypedPropertyDoesNotCrashState(): void
+    {
+        $component = new TypedComponent();
+        $state = $component->state();
+
+        self::assertArrayHasKey('uninitialized', $state);
+        self::assertNull($state['uninitialized']);
+        self::assertSame(10, $state['total']);
+
+        $component->hydrate(['uninitialized' => null, 'total' => 20]);
+        self::assertSame(20, $component->total);
+    }
+
+    public function testSnapshotDecodeRejectsMalformedBase64(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Snapshot::decode(['payload' => '!!!not-valid-base64!!!', 'checksum' => 'fake'], 'test-key');
+    }
+
+    public function testSnapshotDecodeRejectsInvalidJson(): void
+    {
+        $payload = base64_encode('{invalid-json:');
+        $key = 'test-key';
+        $checksum = hash_hmac('sha256', $payload, $key);
+
+        $this->expectException(\InvalidArgumentException::class);
+        Snapshot::decode(['payload' => $payload, 'checksum' => $checksum], $key);
+    }
+
+    public function testCallHandlesAssociativeParamsPositionally(): void
+    {
+        $signed = Snapshot::encode([
+            'class' => TypedComponent::class,
+            'state' => ['uninitialized' => 'ok', 'nullable' => null, 'total' => 10],
+        ], 'test-key');
+
+        $result = Engine::call(
+            $signed,
+            ['name' => 'call', 'method' => 'add', 'params' => ['arbitrary_key' => 5]],
+            'http://app/hot-ui/update',
+            'test-key',
+            $this->ui(),
+        );
+        $next = Snapshot::decode($result['snapshot'], 'test-key');
+
+        self::assertSame(15, $next['state']['total']);
+    }
+
+    public function testCallWithInvalidArgumentsThrowsInvalidActionException(): void
+    {
+        $signed = Snapshot::encode([
+            'class' => TypedComponent::class,
+            'state' => ['uninitialized' => 'ok', 'nullable' => null, 'total' => 10],
+        ], 'test-key');
+
+        $this->expectException(\RuntimeException::class);
+        Engine::call(
+            $signed,
+            ['name' => 'call', 'method' => 'add', 'params' => []],
+            'http://app/hot-ui/update',
+            'test-key',
+            $this->ui(),
+        );
     }
 }

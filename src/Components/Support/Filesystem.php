@@ -24,11 +24,41 @@ final class Filesystem
             return true;
         }
 
+        // A file occupies the target path: mkdir() would only warn.
+        if (file_exists($directory)) {
+            return false;
+        }
+
+        // mkdir() also warns when a file blocks the chain or the parent is not
+        // writable, and the @ operator is banned, so both preconditions are
+        // checked here instead of being silenced.
+        $ancestor = self::nearestExistingAncestor($directory);
+        if ($ancestor === null || ! is_writable($ancestor)) {
+            return false;
+        }
+
         if (mkdir($directory, 0o775, true)) {
             return true;
         }
 
         // A concurrent caller may have created it in the meantime.
         return is_dir($directory);
+    }
+
+    /**
+     * Nearest parent directory that already exists, or null when the chain is
+     * blocked by a file or the filesystem root is reached without one.
+     */
+    private static function nearestExistingAncestor(string $directory): ?string
+    {
+        for ($ancestor = dirname($directory); ; $ancestor = dirname($ancestor)) {
+            if (is_dir($ancestor)) {
+                return $ancestor;
+            }
+
+            if (file_exists($ancestor) || $ancestor === dirname($ancestor)) {
+                return null;
+            }
+        }
     }
 }

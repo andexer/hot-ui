@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Components\Ci4;
 
+use Components\Exception\UnresolvedDirectoryException;
 use Components\Hotfire\Component;
 use Components\Hotfire\ComponentPaths;
 use Components\Hotfire\Config;
@@ -133,7 +134,8 @@ final class Ci4
     {
         $publicDir ??= defined('FCPATH') ? rtrim(FCPATH, '/\\') : null;
         if ($publicDir === null) {
-            throw new \InvalidArgumentException(
+            throw new UnresolvedDirectoryException(
+                'public directory',
                 'Ci4::publish() needs a public directory; pass it explicitly or run inside CodeIgniter 4 (FCPATH).',
             );
         }
@@ -160,7 +162,8 @@ final class Ci4
     {
         if ($viewDir === null) {
             if (! defined('APPPATH')) {
-                throw new \InvalidArgumentException(
+                throw new UnresolvedDirectoryException(
+                    'views directory',
                     'Ci4::publishViews() needs a views directory; pass it explicitly or run inside CodeIgniter 4 (APPPATH).',
                 );
             }

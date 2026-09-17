@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Components\Support;
 
+use Components\Support\Exception\CompiledViewWriteException;
+use Components\Support\Exception\DirectoryCreateException;
+use Components\Support\Exception\TemplateNotFoundException;
+
 /**
  * Compiles a view file to cached plain PHP and reuses the artifact while the
  * source is unchanged (key = sha1 of path + mtime + size).
@@ -31,11 +35,15 @@ final class TemplateCompiler
      *
      * @param string $source Absolute source path, already realpath()ed.
      *
-     * @throws \InvalidArgumentException When the cache directory cannot be created.
-     * @throws \RuntimeException          When the compiled file cannot be written.
+     * @throws DirectoryCreateException     When the cache directory cannot be created.
+     * @throws CompiledViewWriteException   When the compiled file cannot be written.
      */
     public function compile(string $source): string
     {
+        if (! is_file($source) || ! is_readable($source)) {
+            throw TemplateNotFoundException::forTemplate($source, $source);
+        }
+
         $sourceCode = (string) file_get_contents($source);
         $key = sha1($source.':'.hash('sha256', $sourceCode));
         $compiled = $this->cacheDir.'/'.$key.'.php';
@@ -47,19 +55,19 @@ final class TemplateCompiler
         $code = $this->sign($key, (new ViewCompiler())->compile($sourceCode));
 
         if (! Filesystem::ensureDirectory($this->cacheDir)) {
-            throw new \InvalidArgumentException(sprintf('Cannot create compiled views directory [%s].', $this->cacheDir));
+            throw new DirectoryCreateException($this->cacheDir, 'compiled views directory');
         }
 
         $staging = $compiled.'.'.bin2hex(random_bytes(4)).'.new';
         if (file_put_contents($staging, $code, LOCK_EX) === false) {
-            throw new \RuntimeException(sprintf('Cannot write compiled view [%s].', $compiled));
+            throw CompiledViewWriteException::writeFailed($compiled);
         }
         if (! is_writable($this->cacheDir) || ! rename($staging, $compiled)) {
             if (is_file($staging)) {
                 unlink($staging);
             }
 
-            throw new \RuntimeException(sprintf('Cannot replace compiled view [%s].', $compiled));
+            throw CompiledViewWriteException::replaceFailed($compiled);
         }
 
         return $compiled;
