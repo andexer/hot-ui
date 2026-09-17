@@ -61,6 +61,10 @@ final class PublishCommand extends BaseCommand
     {
         $which = 'both';
         foreach ($params as $index => $arg) {
+            if ($arg === null || $arg === '') {
+                continue;
+            }
+            $arg = (string) $arg;
             if ($arg === '--all' || $arg === '-a') {
                 $which = 'both';
             } elseif (preg_match('/^--only=(.*)$/', $arg, $m) && $m[1] !== '') {

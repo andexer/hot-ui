@@ -297,6 +297,7 @@ PHP);
         self::assertStringContainsString('Ci4::publish()', $source);
         self::assertStringNotContainsString('$this->param(', $source, 'BaseCommand in CI4.7 has no param() helper');
         self::assertStringContainsString('str_starts_with($arg, \'-\')', $source);
+        self::assertStringContainsString('$arg === null', $source, 'CI4 passes null entries in $params');
     }
 
     /** @return list<string> */
