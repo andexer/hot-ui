@@ -12,11 +12,7 @@
  * Generated: {{date}}
  */
 ?>
-<form 
-    class="space-y-4 hotfire-{{class}}" 
-    data-hot-component="<?= $component::class ?>"
-    method="post"
->
+<form class="space-y-4" method="post">
     <?php foreach ($props as $prop): ?>
         <?= $this->renderField($prop) ?>
     <?php endforeach; ?>

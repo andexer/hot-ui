@@ -21,8 +21,14 @@ final class HotfireTest extends TestCase
     protected function setUp(): void
     {
         $this->tmp = sys_get_temp_dir().'/hot-ui-hotfire-'.uniqid();
-        $views = $this->tmp.'/views/components/hotfire';
+        $views = $this->tmp.'/views/components';
         mkdir($views, 0777, true);
+        
+        // Create namespace directory (Components\Tests)
+        $namespaceDir = $views.'/Components/Tests';
+        mkdir($namespaceDir, 0777, true);
+        
+        // Also create a copy at root level for the tests to find
         file_put_contents(
             $views.'/counter.php',
             <<<'PHP'
@@ -33,6 +39,19 @@ final class HotfireTest extends TestCase
         );
         file_put_contents(
             $views.'/typed-component.php',
+            '<span><?= $component->total ?></span>',
+        );
+        
+        file_put_contents(
+            $namespaceDir.'/counter.php',
+            <<<'PHP'
+            <button hot:click="increment">Count (<?= $component->count ?>)</button>
+            <input hot:model="count">
+            <div hot:poll="5000"></div>
+            PHP,
+        );
+        file_put_contents(
+            $namespaceDir.'/typed-component.php',
             '<span><?= $component->total ?></span>',
         );
     }
@@ -256,7 +275,7 @@ final class HotfireTest extends TestCase
 
     public function testComponentViewPathUsesConfiguredPrefix(): void
     {
-        self::assertSame('components/hotfire/counter', (new Counter())->viewPath());
+        self::assertSame('components/counter', (new Counter())->viewPath());
 
         Config::setShared(new Config(viewPrefix: 'sections'));
 
@@ -272,6 +291,35 @@ final class HotfireTest extends TestCase
         self::assertStringContainsString('data-x="keep"', $result);
         self::assertStringContainsString('hot:carga="no"', $result);
         self::assertStringNotContainsString('hot:click', $result);
+    }
+
+    public function testHtmlTransformConvertsHotComponentTagSyntax(): void
+    {
+        $html = '<hot:counter init="5" />';
+        $result = HtmlTransform::apply($html);
+
+        self::assertStringContainsString('data-hot-component="counter"', $result);
+        self::assertStringContainsString('data-hot-props=', $result);
+        self::assertStringContainsString('init', $result);
+        self::assertStringNotContainsString('<hot:counter', $result);
+    }
+
+    public function testHtmlTransformConvertsHotComponentWithColonPropSyntax(): void
+    {
+        $html = '<hot:counter :init="5" />';
+        $result = HtmlTransform::apply($html);
+
+        self::assertStringContainsString('data-hot-component="counter"', $result);
+        self::assertStringContainsString('data-hot-props=', $result);
+        self::assertStringContainsString('init', $result);
+    }
+
+    public function testHtmlTransformRemovesClosingHotComponentTags(): void
+    {
+        $html = '<hot:counter init="5"></hot:counter>';
+        $result = HtmlTransform::apply($html);
+
+        self::assertStringNotContainsString('</hot:counter>', $result);
     }
 
     public function testHtmlTransformUsesConfiguredDirectives(): void

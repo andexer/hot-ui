@@ -11,14 +11,11 @@
  * Tips for customization:
  * - Use hot:model for reactive input bindings
  * - Use hot:click for action bindings
- * - Keep the data-hot-component attribute for Hotfire integration
+ * - Use normal HTML here (no <hot:{{class}}> wrapper)
  * - Leverage Tailwind CSS classes for styling
  */
 ?>
-<div 
-    class="hotfire-{{class}} p-4 border rounded-lg bg-white shadow-sm"
-    data-hot-component="<?= $component::class ?>"
->
+<div class="p-4 border rounded-lg bg-white shadow-sm">
     <!-- Add your component markup here -->
     <div class="text-gray-600">
         <p>{{class}} component template</p>

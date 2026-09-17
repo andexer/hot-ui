@@ -64,13 +64,15 @@ final class Counter extends Component
 }
 ```
 
-`app/Views/components/hotfire/counter.php` (its template — the engine renders
+`app/Views/components/counter.php` (its template — the engine renders
 `hot:*` directives and exposes `$component`):
 
 ```php
-<button hot:click="increment">Count (<?= $component->count ?>)</button>
-<input hot:model="count" value="<?= $component->count ?>">
-<div hot:poll="5000">pulse every 5 s</div>
+<div>
+    <button hot:click="increment">Count (<?= $component->count ?>)</button>
+    <input hot:model="count" value="<?= $component->count ?>">
+    <div hot:poll="5000">pulse every 5 s</div>
+</div>
 ```
 
 In the controller:
