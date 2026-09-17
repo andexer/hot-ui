@@ -1,0 +1,11 @@
+/**
+ * Scoped script for the [{{view}}] Hotfire component.
+ *
+ * The Hot-UI driver already POSTs data-hot-click / data-hot-model actions and
+ * morphs the fresh server HTML into [data-hot-component]. Use this module for
+ * component-specific client behaviour; import it after the Hot-UI runtime or
+ * bundle it together with it.
+ */
+export function mount{{class}}(root) {
+    // root is the [data-hot-component] element for this component.
+}

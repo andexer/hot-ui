@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Components\Ci4;
 
 use Components\Hotfire\Component;
+use Components\Hotfire\ComponentPaths;
 use Components\Hotfire\Config;
 use Components\Hotfire\Engine;
 use Components\HotUI;
@@ -34,6 +35,8 @@ final class Ci4
 {
     private static ?Ui $instance = null;
 
+    private static bool $componentAutoloaderRegistered = false;
+
     /**
      * Returns the CI4-bound Hot-UI instance (process-wide singleton).
      *
@@ -41,7 +44,48 @@ final class Ci4
      */
     public static function boot(?string $viewPath = null): Ui
     {
+        self::registerComponentClassAutoloader($viewPath);
+
         return self::$instance ??= HotUI::shared(['view_path' => $viewPath]);
+    }
+
+    /**
+     * Registers a resolution fallback for collocated component classes
+     * (the Livewire 4 "voltage" layout): App\Components\Post\Create lives at
+     * components/hotfire/post/🔥create/create.php. Composer's loader stays
+     * authoritative — this only kicks in when the class is not already
+     * autoloadable, mirroring the derivation ComponentGenerator uses.
+     */
+    private static function registerComponentClassAutoloader(?string $viewPath): void
+    {
+        if (self::$componentAutoloaderRegistered) {
+            return;
+        }
+        self::$componentAutoloaderRegistered = true;
+
+        $root = $viewPath;
+        if ($root === null) {
+            if (! defined('APPPATH')) {
+                return;
+            }
+            $root = rtrim((string) APPPATH, '/\\').'/Views';
+        }
+
+        $paths = new ComponentPaths();
+
+        spl_autoload_register(static function (string $class) use ($root, $paths): void {
+            $prefix = 'App\\Components\\';
+            if (! str_starts_with($class, $prefix)) {
+                return;
+            }
+
+            $relative = substr($class, strlen($prefix));        // e.g. "Post\Create"
+            $path = rtrim($root, '/\\').'/'.$paths->folder($relative).'/'.$paths->leafKebab($relative).'.php';
+
+            if (is_file($path)) {
+                require $path;
+            }
+        });
     }
 
     /**

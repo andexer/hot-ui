@@ -1,0 +1,4 @@
+    <label>
+        {{title}}
+        <input type="text" hot:model="{{prop}}" value="<?= $component->{{prop}} ?>">
+    </label>

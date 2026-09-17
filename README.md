@@ -93,6 +93,20 @@ $page = Ci4::render('layouts/app', [
 ]);
 ```
 
+Para esqueleto de componente + plantilla en un comando (estilo
+`php artisan make:livewire`), el paquete registra `make:hotfire` y
+`make:hotfire-view` en `spark`, p. ej.:
+
+```console
+php spark make:hotfire post.create --mfc --test
+```
+
+Genera la clase `App\Components\Post\Create`, la plantilla
+`components/hotfire/post/🔥create/create.view` y (con `--test`) cobertura
+PHPUnit — todo cohabitando en la carpeta `🔥create/`, marcada con el emoji
+indicador (igual que el `⚡` de Livewire 4; cámbialo con `--emoji`).
+Ver [docs/hotfire.md](docs/hotfire.md#scaffolding-with-makehotfire).
+
 Solo añade `HOTUI_SNAPSHOT_KEY` a tu `.env` y registra la ruta
 (`docs/hotfire.md`):
 

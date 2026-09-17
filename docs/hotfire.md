@@ -97,6 +97,108 @@ If the Hot-UI views live in the native folder (`app/Views`, after
 Components\Ci4\Ci4::boot(APPPATH.'Views');
 ```
 
+## Scaffolding with `make:hotfire`
+
+The package ships two `spark` commands (auto-discovered by CodeIgniter, no
+`Config/Commands.php` needed — any class under `Components\Commands` extending
+`BaseCommand` is picked up):
+
+```console
+php spark make:hotfire post.create --mfc
+php spark make:hotfire-view post.create --props="title,content"
+```
+
+Both accept a component name as dotted or slashed segments
+(`post.create`, `post/create`) — or a camelCase/PascalCase one (`BottomLogout`) —
+and write a skeleton you edit next.
+
+Every artifact of a component cohabits **one self-contained folder** marked with
+the 🔥 indicator (like Livewire 4's ⚡ "voltage" folders): the marker is purely
+visual and is always the emoji-prefixed, kebab-cased leaf segment —
+`BottomLogout` → `🔥bottom-logout/`. For `post.create`:
+
+```
+app/Views/components/hotfire/post/🔥create/
+├── create.php            # PHP class (extends Components\Hotfire\Component)
+├── create.view.php       # Blade-less template ($component + hot:* directives)
+├── create.js             # Scoped JavaScript (optional, --js)
+├── create.css            # Scoped styles (optional, --css)
+├── create.global.css     # Global styles (optional, --global-css)
+└── create.test.php       # PHPUnit test (optional, --test)
+```
+
+| Artifact | File (`post.create`) |
+|---|---|
+| Component class | `…/post/🔥create/create.php` |
+| Template (view) | `…/post/🔥create/create.view.php` |
+| Scoped JS (`--js`) | `…/post/🔥create/create.js` |
+| Scoped CSS (`--css`) | `…/post/🔥create/create.css` |
+| Global CSS (`--global-css`) | `…/post/🔥create/create.global.css` |
+| PHPUnit test (`--test`) | `…/post/🔥create/create.test.php` |
+
+Options:
+
+- `--props="title,content"` — declares public `string` state and a `save()`
+  action + matching form template.
+- `--mfc` — shortcut for `--props="title,content"` (form scaffold).
+- `--namespace="Blog\Posts"` — root namespace of the generated class;
+  default `App\Components` — which the autoloader registered by `Ci4::boot()`
+  resolves straight from the component's 🔥 folder, no `Config/Autoload.php`
+  edits needed. Quote the value so the shell keeps the backslashes.
+- `--views="/abs/path"` — views folder override (default `APPPATH.'Views'`).
+- `--emoji="⚡"` — visual marker on the component folder; default `🔥`. Keep it
+  directory-safe (no `/`, `\` or `.`).
+- `--js`, `--css`, `--global-css` — also generate the scoped JavaScript, scoped
+  stylesheet and global stylesheet sidecars.
+- `--test` — also generate a PHPUnit test, collocated in the component folder.
+- `--force` — overwrite existing files.
+
+`make:hotfire` writes the class **and** the template; `make:hotfire-view`
+writes only the template (for components whose class already exists).
+
+The generated class pins its template, so it renders regardless of where the
+component lives:
+
+```php
+namespace App\Components\Post;
+
+final class Create extends Component
+{
+    protected string $view = 'components/hotfire/post/🔥create/create.view';
+
+    public string $title  = '';
+    public string $content = '';
+
+    public function save(): void
+    {
+        // validate + persist here
+    }
+}
+```
+
+The generated `--test` scaffolds `CIUnitTestCase` coverage for the signed
+render, a `model` round-trip and tamper rejection:
+
+```console
+vendor/bin/phpunit app/Views/components/hotfire/post/🔥create/create.test.php
+```
+
+### Customizing the stubs
+
+The generators never embed templates in code: every artifact is produced from
+a plain `*.stub` file under `src/Components/Hotfire/templates/` and tokens are
+the only dynamic part (`{{class}}`, `{{namespace}}`, `{{propsAndSave}}`,
+`{{fields}}`, …). To bend the scaffold to your house style, override any stub
+(they ship with the package) — or pass your own folder via the
+`$templatesDir` constructor argument:
+
+```php
+new Components\Hotfire\ComponentGenerator($viewsRoot, $namespace, null, '/path/to/your/stubs');
+```
+
+Stub files don't need to be valid PHP/JS/CSS on their own; unknown
+placeholders are left untouched, so partial stubs keep working.
+
 ## Directives `hot:*`
 
 | Directive | Becomes | Driver behaviour |
