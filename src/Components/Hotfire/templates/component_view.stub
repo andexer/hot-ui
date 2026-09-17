@@ -1,3 +1,0 @@
-<form class="space-y-4">
-{{fields}}    <button type="button" hot:click="save">Save Post</button>
-</form>

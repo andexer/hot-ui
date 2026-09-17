@@ -1,0 +1,24 @@
+/*
+ * Global styles for the {{class}} Hotfire component — not scoped.
+ * 
+ * ⚠️ WARNING: These styles are NOT scoped and will affect the entire application.
+ * Use this sparingly and only for truly global styles.
+ * 
+ * When to use:
+ * - Global utility classes that should be available everywhere
+ * - Application-wide theme overrides
+ * - Third-party library integration styles
+ * 
+ * When to avoid:
+ * - Component-specific styles (use scoped CSS instead)
+ * - Styles that could conflict with other components
+ * 
+ * Component: {{class}}
+ * Generated: {{date}}
+ */
+
+/* Add your global styles here */
+/* Example: Custom utility class */
+.{{class}}-utility {
+    /* Global utility styles */
+}

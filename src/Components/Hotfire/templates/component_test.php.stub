@@ -1,0 +1,175 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{testNamespace}};
+
+use {{classFqcn}};
+use CodeIgniter\Test\CIUnitTestCase;
+use Components\Hotfire\Engine;
+use Components\Hotfire\Exception\InvalidSnapshotException;
+use Components\Hotfire\Snapshot;
+use Components\Ui;
+
+/**
+ * Test suite for {{class}} Hotfire component.
+ * 
+ * This test suite covers:
+ * - Component rendering and snapshot generation
+ * - State management and round-trip operations
+ * - Security (tampered snapshot rejection)
+ * - Edge cases and error handling
+ * 
+ * @covers \{{classFqcn}}
+ */
+final class {{class}}Test extends CIUnitTestCase
+{
+    private const TEST_ENDPOINT = '/hot-ui/update';
+    private const TEST_KEY = 'test-key-for-component-testing';
+
+    /**
+     * Tests that the component renders correctly with a signed snapshot.
+     * 
+     * This verifies:
+     * - Component can be instantiated
+     * - Engine renders the component HTML
+     * - Snapshot is properly signed and embedded
+     * - Required data attributes are present
+     */
+    public function testRenderSignedRoot(): void
+    {
+        $component = new {{class}}();
+        $result = Engine::render($component, self::TEST_ENDPOINT, self::TEST_KEY, $this->ui());
+
+        self::assertStringContainsString('data-hot-component', $result['html'], 'Component should have data-hot-component attribute');
+        self::assertStringContainsString('data-hot-snapshot="'.$result['snapshot']['payload'].'"', $result['html'], 'Snapshot should be embedded in HTML');
+        self::assertNotEmpty($result['snapshot']['checksum'], 'Snapshot should have a checksum');
+    }
+
+    /**
+     * Tests the complete round-trip of model updates.
+     * 
+     * This verifies:
+     * - Component state can be serialized
+     * - Model updates work through the Engine
+     * - Updated state is reflected in rendered HTML
+     */
+    public function testModelRoundTrip(): void
+    {
+        $component = new {{class}}();
+        $signed = Snapshot::encode(['class' => {{class}}::class, 'state' => $component->state()], self::TEST_KEY);
+
+        $result = Engine::call(
+            $signed,
+            ['name' => 'model', 'property' => 'title', 'value' => 'Hello World'],
+            self::TEST_ENDPOINT,
+            self::TEST_KEY,
+            $this->ui(),
+        );
+
+        self::assertStringContainsString('value="Hello World"', $result['html'], 'Updated value should be reflected in HTML');
+    }
+
+    /**
+     * Tests that tampered snapshots are rejected for security.
+     * 
+     * This verifies:
+     * - Snapshot checksum validation works
+     * - Tampered snapshots throw exceptions
+     * - Security mechanism is active
+     */
+    public function testTamperedSnapshotRejected(): void
+    {
+        $component = new {{class}}();
+        $signed = Snapshot::encode(['class' => {{class}}::class, 'state' => $component->state()], self::TEST_KEY);
+        
+        // Tamper with the checksum
+        $signed['checksum'] = 'f'.substr((string) $signed['checksum'], 1);
+
+        $this->expectException(InvalidSnapshotException::class);
+        $this->expectExceptionMessage('checksum');
+        
+        Engine::call($signed, ['name' => 'model'], self::TEST_ENDPOINT, self::TEST_KEY, $this->ui());
+    }
+
+    /**
+     * Tests component with initial state.
+     * 
+     * This verifies:
+     * - Component can be initialized with state
+     * - Initial state is preserved in snapshot
+     * - Rendered HTML reflects initial state
+     */
+    public function testComponentWithInitialState(): void
+    {
+        // If your component has constructor parameters, test them here
+        // $component = new {{class}}(['title' => 'Test Title']);
+        // $result = Engine::render($component, self::TEST_ENDPOINT, self::TEST_KEY, $this->ui());
+        
+        // self::assertStringContainsString('Test Title', $result['html']);
+        
+        $this->markTestSkipped('Implement when component has constructor parameters');
+    }
+
+    /**
+     * Tests component action methods.
+     * 
+     * This verifies:
+     * - Component actions can be called
+     * - Actions modify component state correctly
+     * - Updated state is reflected in rendering
+     */
+    public function testComponentActions(): void
+    {
+        $component = new {{class}}();
+        $signed = Snapshot::encode(['class' => {{class}}::class, 'state' => $component->state()], self::TEST_KEY);
+
+        // Test the save action if it exists
+        if (method_exists($component, 'save')) {
+            $result = Engine::call(
+                $signed,
+                ['name' => 'action', 'method' => 'save'],
+                self::TEST_ENDPOINT,
+                self::TEST_KEY,
+                $this->ui(),
+            );
+
+            self::assertStringContainsString('data-hot-component', $result['html'], 'Component should still render after action');
+        } else {
+            $this->markTestSkipped('Component has no save action to test');
+        }
+    }
+
+    /**
+     * Tests that missing required properties are handled.
+     * 
+     * This verifies:
+     * - Component handles missing state gracefully
+     * - No errors occur with empty/incomplete state
+     */
+    public function testComponentHandlesMissingState(): void
+    {
+        $component = new {{class}}();
+        $signed = Snapshot::encode(['class' => {{class}}::class, 'state' => []], self::TEST_KEY);
+
+        $result = Engine::call(
+            $signed,
+            ['name' => 'model', 'property' => 'title', 'value' => ''],
+            self::TEST_ENDPOINT,
+            self::TEST_KEY,
+            $this->ui(),
+        );
+
+        self::assertStringContainsString('data-hot-component', $result['html'], 'Component should render even with empty state');
+    }
+
+    /**
+     * Helper method to create a Ui instance for testing.
+     * 
+     * @return Ui
+     */
+    private function ui(): Ui
+    {
+        return new Ui(rtrim(APPPATH, '/\\').'/Views');
+    }
+}

@@ -1,6 +1,0 @@
-/*
- * Scoped styles for the {{class}} Hotfire component.
- * Selectors are prefixed with .hotfire-{{class}} to stay contained.
- */
-.hotfire-{{class}} {
-}

@@ -187,11 +187,12 @@ final class ComponentGenerator
      */
     public function classContent(string $name, array $props): string
     {
-        return $this->stub('component_class.stub', [
+        return $this->stub('component_class.php.stub', [
             'namespace'    => $this->classNamespace($name),
             'class'        => $this->className($name),
             'view'         => $this->viewRelative($name),
             'propsAndSave' => $this->propsAndSaveBlock($props),
+            'date'         => date('Y-m-d'),
         ]);
     }
 
@@ -205,41 +206,56 @@ final class ComponentGenerator
     public function viewContent(string $name, array $props): string
     {
         if ($props === []) {
-            return $this->stub('component_view_plain.stub', [
+            return $this->stub('component_view_plain.php.stub', [
                 'label' => $this->className($name),
+                'class' => $this->className($name),
+                'props' => $props,
+                'date'  => date('Y-m-d'),
             ]);
         }
 
         $fields = '';
         foreach ($props as $prop) {
-            $fields .= $this->stub('component_view_field.stub', [
+            $fields .= $this->stub('component_view_field.php.stub', [
                 'title' => ucfirst(str_replace(['_', '-'], ' ', $prop)),
                 'prop'  => $prop,
             ]);
         }
 
-        return $this->stub('component_view.stub', ['fields' => $fields]);
+        return $this->stub('component_view.php.stub', [
+            'fields' => $fields,
+            'class'  => $this->className($name),
+            'props'  => $props,
+            'date'   => date('Y-m-d'),
+        ]);
     }
 
     /** Optional scoped JavaScript next to the component template. */
     public function jsContent(string $name): string
     {
-        return $this->stub('component_js.stub', [
+        return $this->stub('component_js.js.stub', [
             'view'  => $this->viewRelative($name),
             'class' => $this->className($name),
+            'date'  => date('Y-m-d'),
         ]);
     }
 
     /** Optional scoped stylesheet next to the component template. */
     public function cssContent(string $name): string
     {
-        return $this->stub('component_css.stub', ['class' => $this->className($name)]);
+        return $this->stub('component_css.css.stub', [
+            'class' => $this->className($name),
+            'date'  => date('Y-m-d'),
+        ]);
     }
 
     /** Optional global stylesheet (unscoped) next to the component template. */
     public function globalCssContent(string $name): string
     {
-        return $this->stub('component_global_css.stub', ['class' => $this->className($name)]);
+        return $this->stub('component_global_css.css.stub', [
+            'class' => $this->className($name),
+            'date'  => date('Y-m-d'),
+        ]);
     }
 
     /** Optional PHPUnit test source for the component. */
@@ -253,10 +269,11 @@ final class ComponentGenerator
         $parts[0] = 'Tests';
         $testNs = implode('\\', $parts);
 
-        return $this->stub('component_test.stub', [
+        return $this->stub('component_test.php.stub', [
             'testNamespace' => $testNs,
             'classFqcn'     => $this->classNamespace($name).'\\'.$class,
             'class'         => $class,
+            'date'          => date('Y-m-d'),
         ]);
     }
 
@@ -277,7 +294,7 @@ final class ComponentGenerator
             static fn (string $prop): string => "    public string \${$prop} = '';",
             $props,
         ));
-        $save = rtrim($this->stub('component_action_save.stub', []))."\n";
+        $save = rtrim($this->stub('component_action_save.php.stub', []))."\n";
 
         return $properties."\n\n".$save;
     }

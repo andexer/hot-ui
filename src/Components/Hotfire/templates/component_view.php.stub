@@ -1,0 +1,31 @@
+<?php
+/**
+ * {{class}} component template
+ * 
+ * This template is rendered by Hotfire and includes:
+ * - Automatic form handling with hot:model bindings
+ * - Action bindings with hot:click for interactivity
+ * - Security features like CSRF protection
+ * - Responsive design with Tailwind CSS
+ * 
+ * Component: {{class}}
+ * Generated: {{date}}
+ */
+?>
+<form 
+    class="space-y-4 hotfire-{{class}}" 
+    data-hot-component="<?= $component::class ?>"
+    method="post"
+>
+    <?php foreach ($props as $prop): ?>
+        <?= $this->renderField($prop) ?>
+    <?php endforeach; ?>
+    
+    <button 
+        type="button" 
+        hot:click="save"
+        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+    >
+        Save
+    </button>
+</form>

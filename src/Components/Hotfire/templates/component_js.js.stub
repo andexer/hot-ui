@@ -1,0 +1,96 @@
+/**
+ * Scoped script for the [{{view}}] Hotfire component.
+ *
+ * The Hot-UI driver already POSTs data-hot-click / data-hot-model actions and
+ * morphs the fresh server HTML into [data-hot-component]. Use this module for
+ * component-specific client behaviour; import it after the Hot-UI runtime or
+ * bundle it together with it.
+ *
+ * Security considerations:
+ * - Never trust data from the DOM; validate on the server
+ * - Use textContent instead of innerHTML when possible
+ * - Sanitize any dynamic HTML content
+ * - Be cautious with eval() and similar functions
+ *
+ * Component: {{class}}
+ * Generated: {{date}}
+ */
+
+/**
+ * Mount function called when the component is initialized.
+ * 
+ * @param {HTMLElement} root - The [data-hot-component] element for this component
+ * @return {void}
+ */
+export function mount{{class}}(root) {
+    // Access component state from data attributes if needed
+    // const state = JSON.parse(root.dataset.hotState || '{}');
+    
+    // Example: Add event listeners
+    // const button = root.querySelector('[data-action]');
+    // if (button) {
+    //     button.addEventListener('click', handleClick);
+    // }
+    
+    // Example: Initialize third-party libraries
+    // if (typeof SomeLibrary !== 'undefined') {
+    //     SomeLibrary.init(root);
+    // }
+    
+    // Example: Setup form validation
+    // const form = root.querySelector('form');
+    // if (form) {
+    //     form.addEventListener('submit', handleFormSubmit);
+    // }
+}
+
+/**
+ * Cleanup function called when the component is destroyed.
+ * 
+ * Use this to remove event listeners, clean up timers, etc.
+ * 
+ * @param {HTMLElement} root - The component root element
+ * @return {void}
+ */
+export function unmount{{class}}(root) {
+    // Remove event listeners
+    // const button = root.querySelector('[data-action]');
+    // if (button) {
+    //     button.removeEventListener('click', handleClick);
+    // }
+    
+    // Clear timers
+    // if (window.{{class}}Timer) {
+    //     clearTimeout(window.{{class}}Timer);
+    // }
+    
+    // Destroy third-party instances
+    // if (root.someLibraryInstance) {
+    //     root.someLibraryInstance.destroy();
+    // }
+}
+
+/**
+ * Example event handler function.
+ * 
+ * @param {Event} event - The event object
+ * @return {void}
+ */
+function handleClick(event) {
+    event.preventDefault();
+    // Handle the click event
+    console.log('{{class}} component clicked');
+}
+
+/**
+ * Example form submission handler.
+ * 
+ * @param {Event} event - The submit event
+ * @return {void}
+ */
+function handleFormSubmit(event) {
+    event.preventDefault();
+    // Validate form data
+    // Submit via Hotfire or AJAX
+    console.log('{{class}} form submitted');
+}

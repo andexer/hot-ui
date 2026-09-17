@@ -1,0 +1,33 @@
+    /**
+     * Action bound from the template via hot:click="save".
+     * 
+     * This method is called when the user interacts with the component.
+     * Add your persistence/validation logic here.
+     * 
+     * Security notes:
+     * - Always validate user input before persistence
+     * - Use CodeIgniter's validation library when available
+     * - Consider CSRF protection for state-changing operations
+     * - Return early on validation failures
+     * 
+     * @return void
+     */
+    public function save(): void
+    {
+        // Example validation logic:
+        // if (empty($this->title) || empty($this->content)) {
+        //     return; // or set error state
+        // }
+        
+        // Example persistence logic:
+        // $model = new \App\Models\PostModel();
+        // $model->save([
+        //     'title' => $this->title,
+        //     'content' => $this->content,
+        // ]);
+        
+        // After successful save, you might want to:
+        // - Redirect to another page
+        // - Show a success message
+        // - Reset the form state
+    }

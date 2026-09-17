@@ -1,7 +1,0 @@
-    /**
-     * Action bound from the template via hot:click="save". Add your own
-     * persistence/validation logic here.
-     */
-    public function save(): void
-    {
-    }

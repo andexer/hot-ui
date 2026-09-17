@@ -1,0 +1,34 @@
+/*
+ * Scoped styles for the {{class}} Hotfire component.
+ * 
+ * Selectors are prefixed with .hotfire-{{class}} to stay contained
+ * and prevent CSS bleeding into other components.
+ * 
+ * Best practices:
+ * - Use BEM-like naming for nested elements: .hotfire-{{class}}__element
+ * - Keep styles minimal and leverage Tailwind utilities where possible
+ * - Avoid !important unless absolutely necessary
+ * - Test responsive behavior at different breakpoints
+ * 
+ * Component: {{class}}
+ * Generated: {{date}}
+ */
+
+.hotfire-{{class}} {
+    /* Base component styles */
+    position: relative;
+    
+    /* Add your custom styles here */
+}
+
+/* Example of nested element styling */
+.hotfire-{{class}}__element {
+    /* Nested element styles */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .hotfire-{{class}} {
+        /* Mobile-specific styles */
+    }
+}
