@@ -295,6 +295,8 @@ PHP);
         self::assertStringContainsString("'hot-ui:publish'", $source);
         self::assertStringContainsString('Ci4::publishViews()', $source);
         self::assertStringContainsString('Ci4::publish()', $source);
+        self::assertStringNotContainsString('$this->param(', $source, 'BaseCommand in CI4.7 has no param() helper');
+        self::assertStringContainsString('str_starts_with($arg, \'-\')', $source);
     }
 
     /** @return list<string> */

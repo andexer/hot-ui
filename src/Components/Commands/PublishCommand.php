@@ -36,9 +36,9 @@ final class PublishCommand extends BaseCommand
 
     public function run(array $params): void
     {
-        $which = strtolower((string) ($this->param('only') ?? 'both'));
-
         try {
+            $which = $this->resolveTarget($params);
+
             if ($which === 'assets' || $which === 'both') {
                 $this->publishAssets();
             }
@@ -47,10 +47,36 @@ final class PublishCommand extends BaseCommand
             }
         } catch (Throwable $e) {
             CLI::error(sprintf('Hot-UI: %s', $e->getMessage()));
-            exit(self::EXIT_ERROR);
+            exit(EXIT_ERROR);
         }
 
         CLI::write('Hot-UI: listo.', 'green');
+    }
+
+    /**
+     * Resolves the requested target from CLI arguments: a bare word
+     * ("views", "assets"), --only=views or --all.
+     */
+    private function resolveTarget(array $params): string
+    {
+        $which = 'both';
+        foreach ($params as $index => $arg) {
+            if ($arg === '--all' || $arg === '-a') {
+                $which = 'both';
+            } elseif (preg_match('/^--only=(.*)$/', $arg, $m) && $m[1] !== '') {
+                $which = strtolower($m[1]);
+            } elseif (($arg === '--only' || $arg === '-o') && isset($params[$index + 1])) {
+                $which = strtolower((string) $params[$index + 1]);
+            } elseif ($arg !== '' && ! str_starts_with($arg, '-')) {
+                $which = strtolower($arg);
+            }
+        }
+
+        if (! in_array($which, ['assets', 'views', 'both'], true)) {
+            throw new \InvalidArgumentException(sprintf('Destino inválido [%s]; usa assets, views o both.', $which));
+        }
+
+        return $which;
     }
 
     private function publishAssets(): void
