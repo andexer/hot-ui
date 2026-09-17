@@ -28,8 +28,15 @@ use Components\Hotfire\Engine;
  */
 final class HotfireController extends Controller
 {
+    /** Maximum accepted request body in bytes (JSON snapshot + action). */
+    private const MAX_BODY_BYTES = 131072;
+
     public function update(): ResponseInterface
     {
+        if (strlen((string) $this->request->getBody()) > self::MAX_BODY_BYTES) {
+            return $this->json(['error' => 'Hotfire: request body too large.'])->setStatusCode(413);
+        }
+
         $body = $this->request->getJSON(true);
         if (
             ! is_array($body)
@@ -43,10 +50,38 @@ final class HotfireController extends Controller
         try {
             $payload = Engine::call($body['snapshot'], $body['action'], $this->endpoint());
         } catch (\Throwable $exception) {
-            return $this->json(['error' => $exception->getMessage()])->setStatusCode(422);
+            return $this->json(['error' => $this->publicMessage($exception)])->setStatusCode(422);
         }
 
         return $this->json($payload);
+    }
+
+    /**
+     * Production never echoes raw exception text back to the client (it can
+     * leak stack traces, paths and internals); the full error is logged and a
+     * generic message returned instead.
+     */
+    private function publicMessage(\Throwable $exception): string
+    {
+        $production = defined('ENVIRONMENT') && ENVIRONMENT === 'production';
+        if ($production) {
+            if (function_exists('log_message')) {
+                log_message(
+                    'error',
+                    '[Hotfire] {message} in {file}:{line} (exception {class})',
+                    [
+                        'message' => $exception->getMessage(),
+                        'file' => $exception->getFile(),
+                        'line' => $exception->getLine(),
+                        'class' => $exception::class,
+                    ],
+                );
+            }
+
+            return 'Hotfire: the component could not be updated.';
+        }
+
+        return $exception->getMessage();
     }
 
     /** Resolves the configured endpoint to a usable URL. */

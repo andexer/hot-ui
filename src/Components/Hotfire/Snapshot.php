@@ -54,6 +54,9 @@ final class Snapshot
         }
 
         $payload = $snapshot['payload'];
+        if (strlen($payload) > 65536) {
+            throw new \InvalidArgumentException('Hotfire: snapshot payload exceeds the size limit.');
+        }
         $expected = $snapshot['checksum'];
         if (! hash_equals($expected, self::checksum($payload, $key))) {
             throw new \InvalidArgumentException('Hotfire: snapshot checksum mismatch.');

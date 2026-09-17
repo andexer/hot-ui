@@ -219,6 +219,48 @@ final class HotfireTest extends TestCase
         Engine::call($snapshot, ['name' => 'model', 'property' => 'count', 'value' => '1'], 'x', 'test-key', $this->ui());
     }
 
+    public function testCallRejectsUndeclaredModelProperty(): void
+    {
+        foreach (['bogus', 'view', '', 'slots'] as $property) {
+            try {
+                Engine::call(
+                    $this->signedCounter(),
+                    ['name' => 'model', 'property' => $property, 'value' => '1'],
+                    'x',
+                    'test-key',
+                    $this->ui(),
+                );
+                self::fail(sprintf('Model property [%s] should have been rejected.', $property));
+            } catch (\RuntimeException) {
+                self::assertTrue(true);
+            }
+        }
+    }
+
+    public function testCallRefusesToInstantiateNonComponentClasses(): void
+    {
+        $snapshot = Snapshot::encode(['class' => \stdClass::class, 'state' => []], 'test-key');
+
+        $this->expectException(\RuntimeException::class);
+        Engine::call($snapshot, ['name' => 'poll'], 'x', 'test-key', $this->ui());
+    }
+
+    public function testHydrateSkipsUndeclaredAndNonPublicProperties(): void
+    {
+        $component = new Counter();
+        $component->hydrate(['count' => 7, 'sneaky' => 'injected']);
+
+        self::assertSame(['count' => 7], $component->state());
+    }
+
+    public function testOversizedSnapshotPayloadRejected(): void
+    {
+        $signed = Snapshot::encode(['blob' => str_repeat('a', 70000)], 'test-key');
+
+        $this->expectException(\InvalidArgumentException::class);
+        Snapshot::decode($signed, 'test-key');
+    }
+
     public function testComponentViewPathUsesConfiguredPrefix(): void
     {
         self::assertSame('components/hotfire/counter', (new Counter())->viewPath());

@@ -10,7 +10,9 @@ namespace Components\Support;
  *
  * JSON_HEX_* flags escape <, >, ', & and in-value " as \uXXXX sequences; the
  * structural quotes are then rewritten too, so the output is valid JavaScript
- * AND can never terminate an HTML attribute.
+ * AND can never terminate an HTML attribute. Raw U+2028/U+2029 (unescaped by
+ * JSON_UNESCAPED_UNICODE) are additionally rewritten to \uXXXX escapes so the
+ * literal can never break an inline <script> literal boundary.
  */
 final class Js
 {
@@ -32,6 +34,10 @@ final class Js
 
         $json = json_encode($value, self::FLAGS);
 
-        return str_replace('"', '\\u0022', $json);
+        return str_replace(
+            ["\u{2028}", "\u{2029}", '"'],
+            ['\\u2028', '\\u2029', '\\u0022'],
+            $json,
+        );
     }
 }

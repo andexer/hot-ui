@@ -83,11 +83,19 @@ final class Engine
         $decoded = Snapshot::decode($snapshot, $key, $config);
         $class = (string) ($decoded['class'] ?? '');
         $component = self::instantiate($class);
-        $component->hydrate((array) ($decoded['state'] ?? []));
+        $state = (array) ($decoded['state'] ?? []);
+        $component->hydrate($state);
 
         $name = (string) ($action['name'] ?? '');
         if ($name === 'model') {
             $property = (string) ($action['property'] ?? '');
+            if (! self::isModelProperty($component, $property, $state)) {
+                throw new \RuntimeException(sprintf(
+                    'Hotfire: [%s] is not a declared public state property of %s.',
+                    $property === '' ? '(empty)' : $property,
+                    $class,
+                ));
+            }
             $component->{$property} = self::castValue($component, $property, $action['value'] ?? null);
             $component->notifyUpdated($property);
         } elseif ($name !== 'poll') {
@@ -138,17 +146,36 @@ final class Engine
 
     private static function instantiate(string $class): Component
     {
-        if (! class_exists($class)) {
-            throw new \RuntimeException(sprintf('Hotfire: component class [%s] not found.', $class));
+        if ($class === '' || ! class_exists($class) || ! is_subclass_of($class, Component::class)) {
+            throw new \RuntimeException(sprintf('Hotfire: [%s] is not a registered Hotfire component.', $class));
         }
-        /** @var Component $component */
+
         $component = new $class();
-        if (! $component instanceof Component) {
-            throw new \RuntimeException(sprintf('Hotfire: [%s] must extend %s.', $class, Component::class));
-        }
         $component->mount();
 
         return $component;
+    }
+
+    /**
+     * A model target must be a declared PUBLIC non-static property that the
+     * verified snapshot actually carries, so the raw action array can never
+     * assign stray, undeclared or non-public members.
+     *
+     * @param array<string, mixed> $state
+     */
+    private static function isModelProperty(Component $component, string $property, array $state): bool
+    {
+        if (! array_key_exists($property, $state)) {
+            return false;
+        }
+
+        try {
+            $reflection = new \ReflectionProperty($component, $property);
+        } catch (\ReflectionException) {
+            return false;
+        }
+
+        return $reflection->isPublic() && ! $reflection->isStatic();
     }
 
     private static function castValue(Component $component, string $property, mixed $value): mixed

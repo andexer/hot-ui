@@ -93,12 +93,22 @@ abstract class Component
     /**
      * Applies serialized state to public properties (hydration).
      *
+     * Only DECLARED public non-static properties are ever touched: unknown,
+     * protected or dynamic member names are skipped instead of silently
+     * creating new ones, keeping the state surface bit-for-bit the same set
+     * that state() handed to the signed snapshot.
+     *
      * @param array<string, mixed> $state
      */
     public function hydrate(array $state): void
     {
         foreach ($state as $name => $value) {
-            if (property_exists($this, $name)) {
+            try {
+                $reflection = new \ReflectionProperty($this, (string) $name);
+            } catch (\ReflectionException) {
+                continue;
+            }
+            if ($reflection->isPublic() && ! $reflection->isStatic()) {
                 $this->{$name} = $value;
             }
         }
