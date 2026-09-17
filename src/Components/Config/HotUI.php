@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Components\Config;
 
+use Components\HotUI as HotUICore;
+
 /**
  * Hot-UI Configuration File
  * 
@@ -19,6 +21,11 @@ namespace Components\Config;
  */
 class HotUI
 {
+    public function __construct()
+    {
+        $this->assetVersion = HotUICore::VERSION;
+    }
+
     /**
      * Component Locations
      * 
@@ -167,9 +174,10 @@ class HotUI
      * Asset Version
      * 
      * Version string for cache busting of frontend assets.
+     * Automatically set to HotUI::VERSION on initialization.
      * Change this value when you update assets to force browser refresh.
      */
-    public string $assetVersion = '0.16.0';
+    public string $assetVersion;
 
     /**
      * Development Mode

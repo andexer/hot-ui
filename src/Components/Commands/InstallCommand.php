@@ -89,12 +89,17 @@ final class InstallCommand extends BaseCommand
             CLI::write('⚠ Route configuration skipped — you may need to add it manually', 'yellow');
         }
 
-        // Step 5: Optional stubs
+        // Step 5: Optional build configuration (Tailwind, PostCSS, Vite)
+        if ($this->publishBuildConfigs($auto, $force)) {
+            CLI::write('✓ Build configs published for Tailwind CSS optimization', 'green');
+        }
+
+        // Step 6: Optional stubs
         if ($this->publishStubs($auto, $force)) {
             CLI::write('✓ Stubs published for customisation', 'green');
         }
 
-        // Step 6: Optional tests
+        // Step 7: Optional tests
         if (! $skipTests && ! $this->runTests($auto)) {
             CLI::write('⚠ Tests skipped or failed — installation may still work', 'yellow');
         }
@@ -318,6 +323,42 @@ final class InstallCommand extends BaseCommand
         }
 
         CLI::write('✓ Hotfire route added to Routes.php', 'green');
+        CLI::newLine();
+
+        return true;
+    }
+
+    /**
+     * Publishes build configuration files (Tailwind, PostCSS, Vite).
+     */
+    private function publishBuildConfigs(bool $auto, bool $force): bool
+    {
+        CLI::write('Step 5: Build Configuration (Tailwind CSS)', 'blue');
+        CLI::newLine();
+
+        if (! $auto) {
+            $publishBuild = CLI::prompt('Publish Tailwind CSS + PostCSS + Vite configs?', ['y', 'n'], 'n');
+            if ($publishBuild !== 'y') {
+                CLI::write('⊘ Build configs not published', 'light_gray');
+                CLI::write('  You can publish them later: php spark hot-ui:publish build', 'light_gray');
+                CLI::newLine();
+
+                return false;
+            }
+        }
+
+        $publishCommand = new PublishCommand();
+        $publishCommand->initialize();
+
+        $result = $publishCommand->run(['build']);
+
+        if ($result !== EXIT_SUCCESS) {
+            CLI::error('✗ Failed to publish build configs');
+            CLI::newLine();
+
+            return false;
+        }
+
         CLI::newLine();
 
         return true;
