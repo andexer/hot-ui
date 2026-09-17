@@ -17,7 +17,7 @@ use SplFileInfo;
  * This mirrors Assets, but the destination lives in the app's views area (not
  * the web root). Once copied, point the engine at the local copy:
  *
- *   HotUI::shared(['view_path' => APPPATH.'Views/hotui']);
+ *   HotUI::shared(['view_path' => APPPATH.'Views']);
  *
  * From then on components, layouts and partials resolve from the host copy,
  * so a later package update cannot overwrite customizations silently: run
@@ -52,7 +52,7 @@ final class Views
      * existing files are overwritten with the bundled version.
      *
      * @param string            $targetDir Directory that will hold the views
-     *                                     (e.g. APPPATH.'Views/hotui' in CI4).
+     *                                     (e.g. APPPATH.'Views' in CI4).
      * @param list<string>|null $only      Restrict to ["components"], ["layouts"]
      *                                     and/or ["partials"]; null copies all groups.
      *

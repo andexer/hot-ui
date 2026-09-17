@@ -58,14 +58,15 @@ Alternativa manual (sin Spark):
 php -r "require 'vendor/autoload.php'; Components\Ci4\Ci4::publishViews();"
 ```
 
-Copia `components/`, `layouts/` y `partials/` a `app/Views/hotui`. Luego usa tu
-copia local (una vez, en un service/bootstrap):
+Copia `components/`, `layouts/` y `partials/` a `app/Views` — la carpeta de
+vistas nativa de CI4 (sin subcarpeta intermedia). Luego usa tu copia local (una
+vez, en un service/bootstrap):
 
 ```php
-Ci4::boot(APPPATH.'Views/hotui');
+Ci4::boot(APPPATH.'Views');
 ```
 
-A partir de ahí `app/Views/hotui/components/ui/*.php` son tuyos. Para traer
+A partir de ahí `app/Views/components/ui/*.php` son tuyos. Para traer
 cambios de una actualización: vuelve a publicar y reintegra tus modificaciones.
 
 > Hot-UI no necesita Vite ni package.json en tu proyecto. El CSS ya viaja
@@ -218,5 +219,5 @@ Si necesitas sobreescribir un layout o partial del paquete, pasa tu propio
 `view_path`:
 
 ```php
-$ui = HotUI::instance(['view_path' => APPPATH.'Views/hotui']);
+$ui = HotUI::instance(['view_path' => APPPATH.'Views']);
 ```

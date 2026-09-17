@@ -31,16 +31,16 @@ npm install
 src/Components/          núcleo PHP (Ui, TemplateRenderer, registry, Support/*)
 views/components/        384 plantillas espejo {ui,blocks}
 js/
-├── app.js               BUNDLE distribuible único (esbuild): Alpine + kernel + islas + driver de reactividad
+├── app.js               BUNDLE distribuible único (esbuild): Alpine + kernel + islas + driver Hotfire
 └── src/
-    ├── app.ts           cargador: kernel + islas → alpine:init → start(); instala reactividad
+    ├── app.ts           cargador: kernel + islas → alpine:init → start(); instala Hotfire
     ├── hot/             kernel (plugin, directivas x-hot-*, engines, dom, theme)
-    ├── hot/reactivity/  driver `data-hot-*` → POST → morphdom (ts + shim morphdom)
+    ├── hot/hotfire/     driver `data-hot-*` → POST → morphdom (ts + shim morphdom)
     └── components/ui/   islas TS espejo de las vistas (mismo nombre kebab)
 css/hot-ui.css           fuente Tailwind v4 (fundaciones + tokens tema)
 css/hot-ui.min.css       CSS compilado que se distribuye (npm run build:css)
-src/Components/Reactivity/  capa reactiva PHP: Snapshot, Component, Engine, HtmlTransform
-src/Components/Ci4/Http/    LivewireController (endpoint POST hot-ui/update)
+src/Components/Hotfire/  capa reactiva PHP: Config, Snapshot, Component, Engine, HtmlTransform
+src/Components/Ci4/Http/ HotfireController (endpoint POST hot-ui/update)
 demo/router.php          router de la demo (estáticos + página)
 docs/*.md                documentación del proyecto (español)
 ```

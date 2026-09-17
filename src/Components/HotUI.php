@@ -25,7 +25,7 @@ use Components\Support\Views;
  */
 final class HotUI
 {
-    public const VERSION = '0.10.0';
+    public const VERSION = '0.11.0';
 
     /** @var list<string> Groups publishViews() can copy on their own. */
     private const VIEW_GROUPS = ['components', 'layouts', 'partials'];
@@ -141,12 +141,13 @@ final class HotUI
     /**
      * Copies the bundled views (components/, layouts/, partials/) into a host
      * project so developers own and customize them. Automatic when used inside
-     * CodeIgniter 4 (APPPATH.'Views/hotui'); otherwise defaults to
-     * getcwd().'/app/Views/hotui' and can be overridden explicitly.
+     * CodeIgniter 4 (defaults to APPPATH.'Views' — the native views folder);
+     * otherwise defaults to getcwd().'/app/Views' and can be overridden
+     * explicitly.
      *
      * After publishing, point the engine at the local copy:
      *
-     *   HotUI::shared(['view_path' => APPPATH.'Views/hotui']);
+     *   HotUI::shared(['view_path' => APPPATH.'Views']);
      *
      * @param string|null        $viewDir Target views directory.
      * @param list<string>|null  $only    Restrict to ["components"], ["layouts"]
@@ -165,8 +166,8 @@ final class HotUI
         }
 
         $viewDir ??= defined('APPPATH')
-            ? rtrim(APPPATH, '/\\').'/Views/hotui'
-            : (getcwd() !== false ? getcwd().'/app/Views/hotui' : null);
+            ? rtrim(APPPATH, '/\\').'/Views'
+            : (getcwd() !== false ? getcwd().'/app/Views' : null);
         if ($viewDir === null) {
             throw new \RuntimeException('HotUI::publishViews() could not resolve a views directory; pass it explicitly.');
         }

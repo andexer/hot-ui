@@ -281,6 +281,26 @@ PHP);
         HotUI::publishViews($this->tmp.'/x', ['fonts']);
     }
 
+    public function testPublishViewsDefaultsToNativeAppViewsFolder(): void
+    {
+        $root = $this->tmp.'/proj';
+        mkdir($root, 0o775, true);
+        $cwd = getcwd();
+        try {
+            chdir($root);
+            HotUI::publishViews();
+        } finally {
+            if ($cwd !== false) {
+                chdir($cwd);
+            }
+        }
+
+        self::assertFileExists($root.'/app/Views/components/ui/card.php');
+        self::assertFileExists($root.'/app/Views/layouts/app.php');
+        self::assertFileExists($root.'/app/Views/partials/meta.php');
+        self::assertDirectoryDoesNotExist($root.'/app/Views/hotui', 'No intermediate hotui/ folder');
+    }
+
     public function testSparkCommandRegisteredForCi4Discovery(): void
     {
         $composer = json_decode((string) file_get_contents(dirname(__DIR__).'/composer.json'), true, 512, JSON_THROW_ON_ERROR);

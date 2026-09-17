@@ -1,25 +1,25 @@
 import Alpine from 'alpinejs';
 import { registerHotUI } from './hot/register.js';
 import { installThemeExporter, installToast } from './hot/globals.js';
-import { installReactivity } from './hot/reactivity/driver.js';
+import { installHotfire } from './hot/hotfire/driver.js';
 import { type HotContext } from './hot/plugin.js';
 import { ISLANDS } from './components/islands.js';
 
 // ---------------------------------------------------------------------------
-// Hot-UI — cargador único.
+// Hot-UI — single entry point.
 //
 //   js/src/app.ts  →(tsc)→  js/app.js
 //
-// Una sola etiqueta en la página:
+// One tag on the page:
 //     <script type="module" src="/js/app.js"></script>
 //
-// Si tu app ya corre su propio Alpine, importa registerHotUI + las islas y
-// regístralo todo dentro de tu propio listener 'alpine:init'.
+// If your app already runs its own Alpine, import registerHotUI + the islands
+// and register everything inside your own 'alpine:init' listener.
 // ---------------------------------------------------------------------------
 
 installToast();
 installThemeExporter();
-installReactivity();
+installHotfire();
 
 document.addEventListener('alpine:init', () => {
     const engine = (window.Alpine ?? Alpine) as unknown as import('./hot/types.js').AlpineLike;
@@ -38,9 +38,8 @@ document.addEventListener('alpine:init', () => {
     }
 });
 
-// Nadie trajo un Alpine → traemos el nuestro. start() dispara 'alpine:init',
-// así que el listener de arriba sigue siendo quien registra todo: un solo
-// camino de ejecución, no dos.
+// No Alpine was mounted by the host → mount ours. start() fires 'alpine:init',
+// so the listener above is still what registers everything: one code path.
 if (!window.Alpine) {
     window.Alpine = Alpine as unknown as never;
     Alpine.start();

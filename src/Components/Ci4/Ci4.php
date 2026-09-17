@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Components\Ci4;
 
+use Components\Hotfire\Component;
+use Components\Hotfire\Config;
+use Components\Hotfire\Engine;
 use Components\HotUI;
-use Components\Reactivity\Component;
-use Components\Reactivity\Engine;
 use Components\Support\Assets;
 use Components\Support\Views;
 use Components\Ui;
@@ -98,12 +99,14 @@ final class Ci4
 
     /**
      * Copies the bundled views (components/, layouts/, partials/) into your
-     * project so you own and customize them. Defaults to APPPATH.'Views/hotui'.
-     * Then use the local copy:
+     * project so you own and customize them. Defaults to APPPATH.'Views' — the
+     * native CodeIgniter 4 views folder — so Hot-UI views live alongside the
+     * rest of your app (no intermediate hotui/ folder). Then use the local
+     * copy:
      *
-     *   Ci4::boot(APPPATH.'Views/hotui');
+     *   Ci4::boot(APPPATH.'Views');
      *
-     * @param string|null        $viewDir Views target (default: APPPATH.'Views/hotui').
+     * @param string|null        $viewDir Views target (default: APPPATH.'Views').
      * @param list<string>|null  $only    Restrict to ["components"], ["layouts"]
      *                                    and/or ["partials"]; null copies all.
      *
@@ -117,30 +120,42 @@ final class Ci4
                     'Ci4::publishViews() needs a views directory; pass it explicitly or run inside CodeIgniter 4 (APPPATH).',
                 );
             }
-            $viewDir = rtrim(APPPATH, '/\\').'/Views/hotui';
+            $viewDir = rtrim(APPPATH, '/\\').'/Views';
         }
 
         return Views::publish($viewDir, $only);
     }
 
     /**
-     * Server-renders a reactive component (Livewire-style) as a ready-to-use
-     * DOM fragment. The returned HTML carries the signed snapshot and the
-     * action endpoint; the JS driver turns data-hot-* into round-trips.
+     * Server-renders a Hotfire component as a ready-to-use DOM fragment. The
+     * returned HTML carries the signed snapshot and the action endpoint; the
+     * JS driver turns data-hot-* into round-trips.
      *
-     *   $counter = new \App\Components\Counter(count: 3);
-     *   return $this->response->setBody(Ci4::live($counter));
+     *   $counter = new \App\Components\Counter();
+     *   return $this->response->setBody(Ci4::hotfire($counter));
      *
-     * The endpoint must be wired to LivewireController (see docs/reactivity):
+     * The endpoint is configured through Hotfire Config (default
+     * "hot-ui/update") and must be routed to HotfireController::update. See
+     * docs/hotfire.md.
      *
-     *   $routes->post('hot-ui/update', 'Components\Ci4\Http\LivewireController::update');
-     *
-     * @param string|null $actionUrl Update endpoint (default: site_url('hot-ui/update')).
+     * @param string|null $actionUrl Endpoint override (default: Config endpoint).
      */
-    public static function live(Component $component, ?string $actionUrl = null): string
+    public static function hotfire(Component $component, ?string $actionUrl = null): string
     {
-        $actionUrl ??= function_exists('site_url') ? (string) site_url('hot-ui/update') : 'hot-ui/update';
+        $actionUrl ??= self::hotfireEndpoint();
 
         return Engine::render($component, $actionUrl)['html'];
+    }
+
+    /** Resolves the configured Hotfire endpoint to a usable URL. */
+    private static function hotfireEndpoint(): string
+    {
+        $endpoint = Config::shared()->endpoint();
+
+        if (preg_match('#^(https?:)?//#', $endpoint) === 1 || str_starts_with($endpoint, '/')) {
+            return $endpoint;
+        }
+
+        return function_exists('site_url') ? (string) site_url($endpoint) : $endpoint;
     }
 }
