@@ -94,8 +94,8 @@ $page = Ci4::render('layouts/app', [
 ```
 
 Para esqueleto de componente + plantilla en un comando (estilo
-`php artisan make:livewire`), el paquete registra `make:hotfire` y
-`make:hotfire-view` en `spark`, p. ej.:
+`php artisan make:livewire`), el paquete registra `make:hotfire`,
+`make:hotfire-view` y `list:hotfire` en `spark`, p. ej.:
 
 ```console
 php spark make:hotfire post.create --mfc --test

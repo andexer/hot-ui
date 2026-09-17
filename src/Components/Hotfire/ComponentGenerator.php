@@ -47,7 +47,7 @@ final class ComponentGenerator
         if ($emoji === '' || preg_match('#[/\\\\\.]#', $emoji)) {
             throw new \InvalidArgumentException('Hotfire emoji must be a non-empty directory-safe marker.');
         }
-        $this->paths = new ComponentPaths($emoji);
+        $this->paths = new ComponentPaths(null, $emoji);
     }
 
     /**

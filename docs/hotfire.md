@@ -99,13 +99,14 @@ Components\Ci4\Ci4::boot(APPPATH.'Views');
 
 ## Scaffolding with `make:hotfire`
 
-The package ships two `spark` commands (auto-discovered by CodeIgniter, no
+The package ships three `spark` commands (auto-discovered by CodeIgniter, no
 `Config/Commands.php` needed — any class under `Components\Commands` extending
 `BaseCommand` is picked up):
 
 ```console
 php spark make:hotfire post.create --mfc
 php spark make:hotfire-view post.create --props="title,content"
+php spark list:hotfire
 ```
 
 Both accept a component name as dotted or slashed segments
@@ -182,6 +183,39 @@ render, a `model` round-trip and tamper rejection:
 ```console
 vendor/bin/phpunit app/Views/components/hotfire/post/🔥create/create.test.php
 ```
+
+### Listing components with `list:hotfire`
+
+Every scaffolded component lives in its own 🔥-marked folder, so the whole
+catalog is discoverable straight from disk — no registry, no config. The third
+spark command walks `<views>/components/hotfire`, maps each marked folder back
+to its component name and reports what it holds:
+
+```console
+php spark list:hotfire
+php spark list:hotfire --simple                       # names only
+php spark list:hotfire --views="/abs/path" --emoji="⚡"
+```
+
+```text
+2 Hotfire components under /path/to/app/Views/components/hotfire:
+
+bottom-logout
+  class     …/components/hotfire/🔥bottom-logout/bottom-logout.php
+  template  …/components/hotfire/🔥bottom-logout/bottom-logout.view.php
+  sidecar   …/components/hotfire/🔥bottom-logout/bottom-logout.test.php
+
+post.create
+  class     …/components/hotfire/post/🔥create/create.php
+  template  …/components/hotfire/post/🔥create/create.view.php
+  sidecar   …/components/hotfire/post/🔥create/create.js
+```
+
+Names are sorted; files unrelated to any component are ignored, and folders
+missing their class or template are listed with `(missing)` so half-scaffolded
+components stand out. The discovery itself is `ComponentPaths::discover()` —
+framework-free and render-free (no autoloading involved), so you can reuse it
+from your own tooling.
 
 ### Customizing the stubs
 
