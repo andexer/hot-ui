@@ -85,7 +85,8 @@
                 "css",
                 "js"
             ],
-            "views": "views"
+            "views": "views",
+            "install-command": "Components\\Commands\\InstallCommand"
         },
         "codeigniter4": {
             "commands": [
