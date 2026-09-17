@@ -44,6 +44,16 @@ Ci4::publish();                // solo FCPATH
 Los componentes viven en `vendor/hot-ui/hot-ui/views` y se consumen sin copiar.
 Para inspeccionarlos y editarlos dentro de tu app:
 
+Comando Spark (registrado vía `extra.codeigniter4.commands`):
+
+```bash
+php spark hot-ui:publish            # assets (css/js) + vistas
+php spark hot-ui:publish views      # solo vistas
+php spark hot-ui:publish assets     # solo css/js
+```
+
+Alternativa manual (sin Spark):
+
 ```bash
 php -r "require 'vendor/autoload.php'; Components\Ci4\Ci4::publishViews();"
 ```

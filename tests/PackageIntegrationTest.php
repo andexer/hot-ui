@@ -281,6 +281,22 @@ PHP);
         HotUI::publishViews($this->tmp.'/x', ['fonts']);
     }
 
+    public function testSparkCommandRegisteredForCi4Discovery(): void
+    {
+        $composer = json_decode((string) file_get_contents(dirname(__DIR__).'/composer.json'), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame(['Components\\Commands'], $composer['extra']['codeigniter4']['commands']);
+
+        $file = dirname(__DIR__).'/src/Components/Commands/PublishCommand.php';
+        self::assertFileExists($file);
+        $source = (string) file_get_contents($file);
+        self::assertStringContainsString('class PublishCommand', $source);
+        self::assertStringContainsString('extends BaseCommand', $source);
+        self::assertStringContainsString("'hot-ui:publish'", $source);
+        self::assertStringContainsString('Ci4::publishViews()', $source);
+        self::assertStringContainsString('Ci4::publish()', $source);
+    }
+
     /** @return list<string> */
     private function allFiles(string $dir): array
     {

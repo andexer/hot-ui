@@ -82,6 +82,11 @@
                 "js"
             ],
             "views": "views"
+        },
+        "codeigniter4": {
+            "commands": [
+                "Components\\Commands"
+            ]
         }
     },
     "minimum-stability": "stable"

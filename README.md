@@ -52,11 +52,12 @@ consumen sin copiar nada. Si quieres **verlos y personalizarlos dentro de tu
 app**, publica las vistas y apunta el motor a la copia local:
 
 ```bash
-composer exec -- php -r "Components\HotUI::publishViews();"
+php -r "require 'vendor/autoload.php'; Components\HotUI::publishViews();"
 ```
 
-Dentro de CodeIgniter 4 copia a `app/Views/hotui` (components/, layouts/,
-partials/). Después, en tu bootstrap:
+Dentro de CodeIgniter 4 es aún más directo (hay comando Spark registrado):
+`php spark hot-ui:publish views`. Copia a `app/Views/hotui` (components/,
+layouts/, partials/). Después, en tu bootstrap:
 
 ```php
 Components\Ci4\Ci4::boot(APPPATH.'Views/hotui');   // usa tu copia local
@@ -228,7 +229,7 @@ Fuente en `views/examples/`, guía en [`docs/ejemplos.md`](docs/ejemplos.md).
 ## Verificación
 
 ```bash
-composer test      # PHPUnit (119 tests)
+composer test      # PHPUnit (120 tests)
 composer smoke     # 384/384 renderizan
 composer examples  # valida login, dashboard y blog
 npm run typecheck && npm run build   # TS estricto → ESM nativo
