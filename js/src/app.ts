@@ -1,6 +1,7 @@
 import Alpine from 'alpinejs';
 import { registerHotUI } from './hot/register.js';
 import { installThemeExporter, installToast } from './hot/globals.js';
+import { installReactivity } from './hot/reactivity/driver.js';
 import { type HotContext } from './hot/plugin.js';
 import { ISLANDS } from './components/islands.js';
 
@@ -18,6 +19,7 @@ import { ISLANDS } from './components/islands.js';
 
 installToast();
 installThemeExporter();
+installReactivity();
 
 document.addEventListener('alpine:init', () => {
     const engine = (window.Alpine ?? Alpine) as unknown as import('./hot/types.js').AlpineLike;

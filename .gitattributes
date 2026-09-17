@@ -11,8 +11,7 @@
 /skills-lock.json export-ignore
 /composer.lock   export-ignore
 /.phpunit.cache  export-ignore
-/js/src/**/*.ts  export-ignore
-/js/src/**/*.map export-ignore
+/js/src            export-ignore
 /phpunit.xml     export-ignore
 /tsconfig.json   export-ignore
 /package.json    export-ignore

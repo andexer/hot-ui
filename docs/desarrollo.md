@@ -19,9 +19,10 @@ npm install
 | `composer test` | suite PHPUnit del núcleo PHP (AttributeBag, TailwindMerge, TemplateRenderer, Ui…) |
 | `composer smoke` | renderiza los 384 componentes y valida salida |
 | `composer examples` | renderiza login/dashboard/blog y valida sus páginas |
-| `npm run dev` | `tsc --watch`: recompila cada .ts al lado de su fuente |
-| `npm run build` | compilación única (ESM nativo, sin bundler) |
-| `npm run typecheck` | verificación de tipos sin emitir |
+| `npm run dev` | `esbuild` en watch: genera `js/app.js` (bundle ESM único) |
+| `npm run build` | `build:js` (bundle minificado) + `build:css` (Tailwind) |
+| `npm run build:js` | empaqueta `js/src/app.ts` + Alpine + morphdom → `js/app.js` |
+| `npm run typecheck` | verificación de tipos (`tsc --noEmit`) sin emitir |
 | `php -S 127.0.0.1:8080 demo/router.php` | demo visual en http://127.0.0.1:8080 |
 
 ## Estructura
@@ -30,13 +31,16 @@ npm install
 src/Components/          núcleo PHP (Ui, TemplateRenderer, registry, Support/*)
 views/components/        384 plantillas espejo {ui,blocks}
 js/
-├── app.js               entrada estática única (<script module>)
+├── app.js               BUNDLE distribuible único (esbuild): Alpine + kernel + islas + driver de reactividad
 └── src/
-    ├── app.ts           cargador: kernel + islas → alpine:init → start()
+    ├── app.ts           cargador: kernel + islas → alpine:init → start(); instala reactividad
     ├── hot/             kernel (plugin, directivas x-hot-*, engines, dom, theme)
+    ├── hot/reactivity/  driver `data-hot-*` → POST → morphdom (ts + shim morphdom)
     └── components/ui/   islas TS espejo de las vistas (mismo nombre kebab)
 css/hot-ui.css           fuente Tailwind v4 (fundaciones + tokens tema)
 css/hot-ui.min.css       CSS compilado que se distribuye (npm run build:css)
+src/Components/Reactivity/  capa reactiva PHP: Snapshot, Component, Engine, HtmlTransform
+src/Components/Ci4/Http/    LivewireController (endpoint POST hot-ui/update)
 demo/router.php          router de la demo (estáticos + página)
 docs/*.md                documentación del proyecto (español)
 ```
@@ -44,10 +48,10 @@ docs/*.md                documentación del proyecto (español)
 ## Flujo típico
 
 1. **Cambios de vista**: edita el `.php`; `composer smoke` valida.
-2. **Cambios de comportamiento**: edita la isla `.ts`; `npm run dev` mantiene
-   el `.js` compilado al día mientras pruebas en la demo.
+2. **Cambios de comportamiento**: edita el `.ts`; `npm run dev` regenera el
+   bundle `js/app.js` mientras pruebas en la demo o en un host.
 3. **Componente nuevo**: sigue `docs/guia-componentes.md`.
-4. **Antes de commit**: `composer test && composer smoke && npm run typecheck && npm run build` — `build` regenera `css/hot-ui.min.css`; commitea ese `.min.css` (es lo que se distribuye).
+4. **Antes de commit**: `composer test && composer smoke && npm run typecheck && npm run build` — `build` regenera `js/app.js` (bundle) y `css/hot-ui.min.css`; commitea ambos (son lo que se distribuye; el publicador copia `js/app.js`, nunca `js/src/`).
 
 ## Consumo desde una aplicación externa
 

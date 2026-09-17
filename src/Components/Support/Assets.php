@@ -40,9 +40,10 @@ final class Assets
     }
 
     /**
-     * Copies bundled assets into the target directory, preserving structure
-     * (css/hot-ui.css, js/app.js, js/src/**). Idempotent: existing files are
-     * overwritten with the bundled version.
+     * Copies bundled assets into the target directory (css/ and js/app.js).
+     * Idempotent: existing files are overwritten with the bundled version.
+     * The js group ships the compiled root entry only (js/app.js); js/src/ is
+     * development source that stays out of production.
      *
      * @param string            $targetDir Web-root directory serving static files.
      * @param list<string>|null $only      Restrict to ["css"] and/or ["js"]; null copies both.
@@ -77,8 +78,9 @@ final class Assets
                 $relative = substr($file->getPathname(), strlen($sourceDir) + 1);
                 $relative = strtr($relative, '\\', '/');
                 // Sources and maps are development artefacts; only ship the
-                // compiled ESM output the page actually loads.
-                if (str_ends_with($relative, '.ts') || str_ends_with($relative, '.map')) {
+                // compiled ESM output the page actually loads. js/src/ is the
+                // live TypeScript workbench for maintainers, never for hosts.
+                if (str_ends_with($relative, '.ts') || str_ends_with($relative, '.map') || ($group === 'js' && str_starts_with($relative, 'src/'))) {
                     continue;
                 }
 

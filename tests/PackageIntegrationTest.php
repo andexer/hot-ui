@@ -173,7 +173,7 @@ PHP);
         self::assertGreaterThan(0, $copied['js']);
         self::assertFileExists($public.'/css/hot-ui.min.css');
         self::assertFileExists($public.'/js/app.js');
-        self::assertFileExists($public.'/js/src/app.js');
+        self::assertFileDoesNotExist($public.'/js/src/app.js', 'js/src is maintainer source, not host runtime');
 
         foreach ($this->allFiles($public) as $path) {
             self::assertStringEndsNotWith('.ts', $path, 'TypeScript sources must not ship to public/');

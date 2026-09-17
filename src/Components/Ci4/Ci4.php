@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Components\Ci4;
 
 use Components\HotUI;
+use Components\Reactivity\Component;
+use Components\Reactivity\Engine;
 use Components\Support\Assets;
 use Components\Support\Views;
 use Components\Ui;
@@ -119,5 +121,26 @@ final class Ci4
         }
 
         return Views::publish($viewDir, $only);
+    }
+
+    /**
+     * Server-renders a reactive component (Livewire-style) as a ready-to-use
+     * DOM fragment. The returned HTML carries the signed snapshot and the
+     * action endpoint; the JS driver turns data-hot-* into round-trips.
+     *
+     *   $counter = new \App\Components\Counter(count: 3);
+     *   return $this->response->setBody(Ci4::live($counter));
+     *
+     * The endpoint must be wired to LivewireController (see docs/reactivity):
+     *
+     *   $routes->post('hot-ui/update', 'Components\Ci4\Http\LivewireController::update');
+     *
+     * @param string|null $actionUrl Update endpoint (default: site_url('hot-ui/update')).
+     */
+    public static function live(Component $component, ?string $actionUrl = null): string
+    {
+        $actionUrl ??= function_exists('site_url') ? (string) site_url('hot-ui/update') : 'hot-ui/update';
+
+        return Engine::render($component, $actionUrl)['html'];
     }
 }

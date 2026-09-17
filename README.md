@@ -76,6 +76,25 @@ compilado y `js/app.js` como ESM estático; el navegador los carga directo desde
 instala en tu proyecto). Si tu app ya usa Vite, igualmente puedes servirlos
 desde `public/` o importarlos como estáticos; Hot-UI no exige ningún build.
 
+### Componentes reactivos (Livewire-style)
+
+La capa de [reactividad](docs/reactividad.md) da estado + acciones en PHP sin
+recargar: `hot:click`, `hot:model` y `hot:poll` en tus plantillas, un
+`__POST /hot-ui/update__` para el round-trip y morphdom en el cliente:
+
+```php
+use App\Components\Counter;
+use Components\Ci4\Ci4;
+
+$page = Ci4::render('layouts/app', [
+    'title'   => 'Contador',
+    'content' => Ci4::live(new Counter()),   // fragmento + snapshot firmado
+]);
+```
+
+Solo añade `HOTUI_SNAPSHOT_KEY` a tu `.env` y registra la ruta
+(`docs/reactividad.md`):
+
 En un controller:
 
 ```php
@@ -196,6 +215,8 @@ Y en el layout:
 | `Ci4::render($template, $data)` | Renderiza una página/partial a string |
 | `Ci4::view($template, $data)` | Igual que `render()` pero compila la sintaxis de tags `<ui:…>` |
 | `Ci4::publish($publicDir?)` | Publica a FCPATH por defecto |
+| `Ci4::live($component)` | Renderiza un componente reactivo (fragmento + snapshot) |
+| `Engine::render()/call()` | Corazón de la capa reactiva (ver `docs/reactividad.md`) |
 | `ui_view($template, $data)` | Helper global: alias de `Ci4::view()` / `Ui::view()` en contexto |
 
 Config soportada: `view_path` (sobrescribe las vistas internas del paquete).
@@ -218,6 +239,7 @@ Fuente en `views/examples/`, guía en [`docs/ejemplos.md`](docs/ejemplos.md).
 
 - [`docs/arquitectura.md`](docs/arquitectura.md) — capas, renderer, flujo de datos
 - [`docs/codeigniter4.md`](docs/codeigniter4.md) — integración 100% nativa con CI4
+- [`docs/reactividad.md`](docs/reactividad.md) — componentes Livewire-style (`hot:*`, snapshot, morphdom)
 - [`docs/sintaxis-tags.md`](docs/sintaxis-tags.md) — tags `<ui:…>`, `ui:slot` y reglas de atributos
 - [`docs/guia-componentes.md`](docs/guia-componentes.md) — crear componente + isla
 - [`docs/catalogo.md`](docs/catalogo.md) — los 384 ↔ isla/motor que usan

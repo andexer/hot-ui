@@ -6,9 +6,10 @@
     "version": "1.0.0",
     "license": "MIT",
     "scripts": {
-        "dev": "tsc --watch",
-        "build": "tsc && npm run build:css",
+        "dev": "esbuild js/src/app.ts --bundle --format=esm --target=es2020 --outfile=js/app.js --watch",
+        "build:js": "esbuild js/src/app.ts --bundle --format=esm --target=es2020 --minify --outfile=js/app.js",
         "build:css": "tailwindcss -i css/hot-ui.css -o css/hot-ui.min.css --minify",
+        "build": "npm run build:js && npm run build:css",
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
@@ -17,6 +18,8 @@
     "devDependencies": {
         "@tailwindcss/cli": "^4.1.11",
         "@types/alpinejs": "^3.13.11",
+        "esbuild": "^0.28.2",
+        "morphdom": "^2.7.8",
         "typescript": "^6.0.3"
     }
 }
