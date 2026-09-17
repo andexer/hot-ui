@@ -75,4 +75,23 @@ final class CommandsInstallTest extends TestCase
         $options->setAccessible(true);
         self::assertNotEmpty($options->getValue($command));
     }
+
+    public function testInstallCommandHasRouteConfigurationMethod(): void
+    {
+        $command = new InstallCommand();
+        $reflection = new ReflectionClass($command);
+
+        self::assertTrue($reflection->hasMethod('configureRoutes'));
+        self::assertTrue($reflection->getMethod('configureRoutes')->isPrivate());
+    }
+
+    public function testInstallCommandHasRouteDetectionMethods(): void
+    {
+        $command = new InstallCommand();
+        $reflection = new ReflectionClass($command);
+
+        self::assertTrue($reflection->hasMethod('findRoutesFile'));
+        self::assertTrue($reflection->hasMethod('routeExists'));
+        self::assertTrue($reflection->hasMethod('addRouteToFile'));
+    }
 }

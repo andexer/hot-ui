@@ -84,12 +84,17 @@ final class InstallCommand extends BaseCommand
             return EXIT_ERROR;
         }
 
-        // Step 4: Optional stubs
+        // Step 4: Route configuration
+        if (! $this->configureRoutes($auto, $force)) {
+            CLI::write('⚠ Route configuration skipped — you may need to add it manually', 'yellow');
+        }
+
+        // Step 5: Optional stubs
         if ($this->publishStubs($auto, $force)) {
             CLI::write('✓ Stubs published for customisation', 'green');
         }
 
-        // Step 5: Optional tests
+        // Step 6: Optional tests
         if (! $skipTests && ! $this->runTests($auto)) {
             CLI::write('⚠ Tests skipped or failed — installation may still work', 'yellow');
         }
@@ -252,6 +257,141 @@ final class InstallCommand extends BaseCommand
     }
 
     /**
+     * Configures the Hotfire route in CodeIgniter 4 Routes.php.
+     */
+    private function configureRoutes(bool $auto, bool $force): bool
+    {
+        CLI::write('Step 4: Route Configuration', 'blue');
+        CLI::newLine();
+
+        $routesFile = $this->findRoutesFile();
+        if ($routesFile === null) {
+            CLI::write('⊘ Could not find Routes.php file', 'light_gray');
+            CLI::write('  You will need to add the route manually:', 'light_gray');
+            $config = Config::shared();
+            CLI::write('  $routes->post(\''.$config->endpoint().'\', \Components\Ci4\Http\HotfireController::class);', 'white');
+            CLI::newLine();
+
+            return false;
+        }
+
+        CLI::write('✓ Found Routes.php: '.clean_path($routesFile), 'green');
+
+        // Check if route already exists
+        $config = Config::shared();
+        $routePattern = $config->endpoint();
+        $routesContent = file_get_contents($routesFile);
+        if ($routesContent === false) {
+            CLI::error('✗ Could not read Routes.php');
+            CLI::newLine();
+
+            return false;
+        }
+
+        if ($this->routeExists($routesContent, $routePattern)) {
+            CLI::write('✓ Hotfire route already configured', 'green');
+            CLI::newLine();
+
+            return true;
+        }
+
+        // Ask user if they want to add the route
+        if (! $auto) {
+            $addRoute = CLI::prompt('Add Hotfire route to Routes.php?', ['y', 'n'], 'y');
+            if ($addRoute !== 'y') {
+                CLI::write('⊘ Route not added — you will need to add it manually', 'light_gray');
+                CLI::write('  $routes->post(\''.$routePattern.'\', \Components\Ci4\Http\HotfireController::class);', 'white');
+                CLI::newLine();
+
+                return false;
+            }
+        }
+
+        // Add the route
+        $routeLine = "\$routes->post('{$routePattern}', \\Components\\Ci4\\Http\\HotfireController::class);";
+
+        if (! $this->addRouteToFile($routesFile, $routesContent, $routeLine)) {
+            CLI::error('✗ Failed to add route to Routes.php');
+            CLI::newLine();
+
+            return false;
+        }
+
+        CLI::write('✓ Hotfire route added to Routes.php', 'green');
+        CLI::newLine();
+
+        return true;
+    }
+
+    /**
+     * Finds the CodeIgniter 4 Routes.php file.
+     */
+    private function findRoutesFile(): ?string
+    {
+        $candidates = [
+            APPPATH.'Config/Routes.php',
+            ROOTPATH.'app/Config/Routes.php',
+            ROOTPATH.'Config/Routes.php',
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Checks if the Hotfire route already exists in the routes file.
+     */
+    private function routeExists(string $content, string $endpoint): bool
+    {
+        // Check for various patterns that might indicate the route exists
+        $patterns = [
+            "'{$endpoint}'",
+            '"'.$endpoint.'"',
+            'HotfireController',
+            'hot-ui/update',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (str_contains($content, $pattern)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Adds the route line to the Routes.php file.
+     */
+    private function addRouteToFile(string $file, string $content, string $routeLine): bool
+    {
+        // Try to add the route after the existing routes section
+        // Look for common patterns like "Routes" or just add at the end
+        $lines = explode("\n", $content);
+        $insertPosition = count($lines);
+
+        // Try to find a good insertion point (after existing routes)
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, '$routes->') && ! str_contains($line, '//')) {
+                $insertPosition = $i + 1;
+            }
+        }
+
+        // Insert the route with proper indentation
+        $indentation = '    ';
+        array_splice($lines, $insertPosition, 0, [$indentation.$routeLine]);
+
+        $newContent = implode("\n", $lines);
+
+        return file_put_contents($file, $newContent, LOCK_EX) !== false;
+    }
+
+    /**
      * Optionally publishes stubs for customisation.
      */
     private function publishStubs(bool $auto, bool $force): bool
@@ -359,16 +499,11 @@ final class InstallCommand extends BaseCommand
         CLI::write('   Config::setShared(new \Config\HotUI());', 'white');
         CLI::newLine();
 
-        CLI::write('2. Add Hotfire route to Routes.php:', 'light_gray');
-        $config = Config::shared();
-        CLI::write('   $routes->post(\''.$config->endpoint().'\', \Components\Ci4\Http\HotfireController::class);', 'white');
-        CLI::newLine();
-
-        CLI::write('3. Create your first component:', 'light_gray');
+        CLI::write('2. Create your first component:', 'light_gray');
         CLI::write('   php spark make:hotfire welcome --mfc', 'white');
         CLI::newLine();
 
-        CLI::write('4. List existing components:', 'light_gray');
+        CLI::write('3. List existing components:', 'light_gray');
         CLI::write('   php spark hot-ui:list', 'white');
         CLI::newLine();
 
