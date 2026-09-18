@@ -27,7 +27,7 @@ use Components\Support\Views;
  */
 final class HotUI
 {
-    public const VERSION = '0.21.0';
+    public const VERSION = '0.22.0';
 
     /** @var list<string> Groups publishViews() can copy on their own. */
     private const VIEW_GROUPS = ['components', 'layouts', 'partials'];

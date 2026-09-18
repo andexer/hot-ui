@@ -26,6 +26,17 @@ use Throwable;
  */
 final class PublishCommand extends BaseCommand
 {
+    /**
+     * CI4.7 forwards the logger and the command locator; standalone use (tests,
+     * package tooling) can build the command without them.
+     */
+    public function __construct(?\Psr\Log\LoggerInterface $logger = null, ?\CodeIgniter\CLI\Commands $commands = null)
+    {
+        if ($logger !== null && $commands !== null) {
+            parent::__construct($logger, $commands);
+        }
+    }
+
     protected $group = 'Hot-UI';
 
     protected $name = 'hot-ui:publish';

@@ -167,7 +167,7 @@ namespace App\Components\Post;
 
 final class Create extends Component
 {
-    protected string $view = 'components/hotfire/post/🔥create/create.view';
+    protected string $view = 'components/hotfire/post/🔥create/create.view.php';
 
     public string $title  = '';
     public string $content = '';
@@ -226,10 +226,16 @@ a plain `*.stub` file under `src/Components/Hotfire/templates/` and tokens are
 the only dynamic part (`{{class}}`, `{{namespace}}`, `{{propsAndSave}}`,
 `{{fields}}`, …). To bend the scaffold to your house style, override any stub
 (they ship with the package) — or pass your own folder via the
-`$templatesDir` constructor argument:
+`customStubsDir` constructor argument:
 
 ```php
-new Components\Hotfire\ComponentGenerator($viewsRoot, $namespace, null, '/path/to/your/stubs');
+use Components\Hotfire\ComponentGenerator;
+
+new ComponentGenerator(
+    $viewsRoot,
+    $namespace,
+    customStubsDir: '/path/to/your/stubs',
+);
 ```
 
 Stub files don't need to be valid PHP/JS/CSS on their own; unknown
@@ -240,11 +246,29 @@ placeholders are left untouched, so partial stubs keep working.
 | Directive | Becomes | Driver behaviour |
 |---|---|---|
 | `hot:click="method"` | `data-hot-click` | POST `{method}` after snapshot verification |
-| `hot:model="property"` | `data-hot-model` | POST the input `value` → cast to the PHP type |
+| `hot:submit="method"` | `data-hot-submit` | POST a form action without a page reload |
+| `hot:change="method"` | `data-hot-change` | POST an action when the control changes |
+| `hot:key.enter="method"` | `data-hot-key` + modifiers | POST an action for matching key events |
+| `hot:model="property"` | `data-hot-model` | POST the input value → cast to the PHP type |
+| `hot:model.live.debounce.300ms="property"` | `data-hot-model` + modifiers | Sync text-like controls with debounce |
 | `hot:poll="ms"` | `data-hot-poll` | Re-render every `ms` (and re-sign) |
+| `hot:init="method"` | `data-hot-init` | Run an action once when the component binds |
+| `hot:lazy="method"` | `data-hot-lazy` | Run an action when the element enters the viewport |
+| `hot:sort="method"` + `data-hot-sort-item="id"` | `data-hot-sort` | Dispatch `{from,to}` when a dragged item is dropped |
+| `hot:confirm="Message"` | `data-hot-confirm` | Browser confirmation before the action |
+| `hot:target="name"` | `data-hot-target` | Names the action for loading/dirty matching |
+| `hot:loading="target"` | `data-hot-loading` | Receives `data-hot-loading-active` during matching requests |
+| `hot:dirty="property"` | `data-hot-dirty` | Receives `data-hot-dirty-active` when a model differs from its last server value |
 
 Unknown `hot:*` attributes are left untouched so you can build your own
 semantics on top.
+
+Hotfire keeps its own vocabulary. These directives are inspired by the same
+server-driven UI problem space as other tools, but the public API remains
+`hot:*`, the runtime events are `hotfire:*`, and the package does not expose
+`wire:*` aliases.
+
+The implementation roadmap lives in [`docs/hotfire-todo.md`](hotfire-todo.md).
 
 ## Configuration
 
@@ -257,7 +281,7 @@ bootstrap with `Config::setShared($config)`):
 | `endpoint` | `hot-ui/update` | URL the driver posts to |
 | `viewPrefix` | `components/hotfire` | Single source of truth for component folders: scaffolding, discovery and the template fallback all resolve below it |
 | `snapshotKey` / `snapshotKeyEnv` | env `HOTUI_SNAPSHOT_KEY` | Signing key source |
-| `directives` | `click, model, poll, change, key` | `hot:*` → `data-hot-*` map |
+| `directives` | `click, model, poll, submit, change, key, loading, dirty, target, confirm, init, offline, model-array, lazy, sort` | `hot:*` → `data-hot-*` map |
 | `reserved` | `mount, booted, updated, ...` | Framework methods never callable as actions |
 
 ```php

@@ -16,7 +16,7 @@ declare(strict_types=1);
  *   php bin/hot-ui <command> [options]
  *   php bin/hot-ui --help
  * 
- * @version 0.16.0
+ * @version 0.22.0
  */
 
 
@@ -25,7 +25,7 @@ use Components\Ui;
 
 require dirname(__DIR__).'/vendor/autoload.php';
 
-const VERSION = '0.16.0';
+const VERSION = '0.22.0';
 
 /**
  * Main CLI dispatcher
@@ -51,39 +51,24 @@ function main(): int
 
 /**
  * Lint command - Enforces PHP best-practices
+ *
+ * The authoritative linter is bin/lint.php (the implementation exercised by
+ * LintScriptTest/HookScriptTest); this subcommand delegates to it so the CLI
+ * and the commit gate always agree on the house rules.
  */
 function commandLint(array $args): int
 {
-    $targets = $args === [] ? LINT_TARGETS : $args;
-    
-    echo "Running linter on: ".implode(', ', $targets)."\n";
-    
-    $violations = [];
-    foreach (lintFiles($targets) as $file) {
-        $source = file_get_contents($file);
-        if ($source === false) {
-            continue;
-        }
-        
-        $packageSource = lintIsPackageSource($file);
-        $fileViolations = lintSource($source, $packageSource);
-        
-        foreach ($fileViolations as $violation) {
-            $violations[] = "$file:$violation";
-        }
-    }
-    
-    if ($violations === []) {
-        echo "✓ No violations found\n";
-        return 0;
-    }
-    
-    echo "✗ Found ".count($violations)." violation(s):\n";
-    foreach ($violations as $violation) {
-        echo "  $violation\n";
-    }
-    
-    return 1;
+    $suffix = $args === [] ? '' : ' '.implode(' ', array_map('escapeshellarg', $args));
+    $command = sprintf(
+        '%s %s/bin/lint.php%s 2>&1',
+        escapeshellarg(PHP_BINARY),
+        escapeshellarg(dirname(__DIR__)),
+        $suffix,
+    );
+
+    passthru($command, $code);
+
+    return $code;
 }
 
 /**
@@ -592,17 +577,46 @@ function lintFunctionName(array $tokens, int $index): ?string
 
 function lintHasReturnType(array $tokens, int $index): bool
 {
+    // Find the closing parenthesis of the parameter list, then check for a
+    // return type (': …') before the body opens. This recognizes scalar,
+    // array, nullable, union, intersection and DNF return types alike.
+    $depth = 0;
+    $close = null;
     for ($i = $index; isset($tokens[$i]); ++$i) {
-        if ($tokens[$i]['text'] === '{') {
+        if ($tokens[$i]['text'] === '(') {
+            ++$depth;
+            continue;
+        }
+        if ($tokens[$i]['text'] === ')') {
+            --$depth;
+            if ($depth === 0) {
+                $close = $i;
+                break;
+            }
+        }
+    }
+    if ($close === null) {
+        return false;
+    }
+
+    for ($i = $close + 1; isset($tokens[$i]); ++$i) {
+        $id = $tokens[$i]['id'];
+        $text = $tokens[$i]['text'];
+
+        if (in_array($id, [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+            continue;
+        }
+        if ($text === '{' || $text === '=>') {
             return false;
         }
-        if ($tokens[$i]['id'] === T_STRING && in_array($tokens[$i]['text'], ['void', 'never', 'null'], true)) {
-            return true;
-        }
-        if (in_array($tokens[$i]['id'], [T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED], true)) {
+        if ($text === ':') {
+            // A ':' after the parameter list is the return-type separator
+            // (unless it is a naked standalone-null return, which PHP 8.2
+            // also spells 'null' — still a declared type).
             return true;
         }
     }
+
     return false;
 }
 

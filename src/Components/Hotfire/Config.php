@@ -22,8 +22,18 @@ final class Config
         'click' => 'click',
         'model' => 'model',
         'poll' => 'poll',
+        'submit' => 'submit',
         'change' => 'change',
         'key' => 'key',
+        'loading' => 'loading',
+        'dirty' => 'dirty',
+        'target' => 'target',
+        'confirm' => 'confirm',
+        'init' => 'init',
+        'offline' => 'offline',
+        'model-array' => 'model-array',
+        'lazy' => 'lazy',
+        'sort' => 'sort',
     ];
 
     /** Framework methods that can never be invoked as an action. */
@@ -45,7 +55,7 @@ final class Config
      */
     public function __construct(
         private string $endpoint = 'hot-ui/update',
-        private string $viewPrefix = 'components',
+        private string $viewPrefix = 'components/hotfire',
         private ?string $snapshotKey = null,
         private string $snapshotKeyEnv = 'HOTUI_SNAPSHOT_KEY',
         private array $directives = self::DEFAULT_DIRECTIVES,

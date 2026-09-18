@@ -113,6 +113,27 @@ final class Ui
     }
 
     /**
+     * Renders a template with the scope bound to a given object (used by the
+     * Hotfire engine so `$this` in a component view is the component).
+     *
+     * @param string               $template File name relative to $basePath.
+     * @param object               $binding  Object exposed as `$this` in the view.
+     * @param array<string, mixed> $data     Variables extracted into the scope.
+     * @param string|null          $basePath Directory that contains the template.
+     */
+    public function viewBound(string $template, object $binding, array $data = [], ?string $basePath = null): string
+    {
+        $source = $this->locateSource($template, $basePath ?? $this->viewsRoot);
+
+        self::$stack[] = new RenderContext([], new Slot());
+        try {
+            return $this->renderer->renderPathBound($this->compiledPath($source), $binding, $data);
+        } finally {
+            array_pop(self::$stack);
+        }
+    }
+
+    /**
      * Creates a dedicated instance.
      *
      * @param string|null $viewPath Overrides the default project views path.

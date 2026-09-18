@@ -25,6 +25,7 @@ npm install
 | `npm run build` | `build:js` (bundle minificado) + `build:css` (Tailwind) |
 | `npm run build:js` | empaqueta `js/src/app.ts` + Alpine + morphdom → `js/app.js` |
 | `npm run typecheck` | verificación de tipos (`tsc --noEmit`) sin emitir |
+| `npm run test:browser` | smoke test Hotfire en Chromium si está instalado; se salta limpio cuando no hay navegador |
 | `php -S 127.0.0.1:8080 demo/router.php` | demo visual en http://127.0.0.1:8080 |
 
 ## Estructura

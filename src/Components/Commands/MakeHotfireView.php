@@ -25,6 +25,17 @@ final class MakeHotfireView extends BaseCommand
     use CliOptions;
 
     /**
+     * CI4.7 forwards the logger and the command locator; standalone use (tests,
+     * package tooling) can build the command without them.
+     */
+    public function __construct(?\Psr\Log\LoggerInterface $logger = null, ?\CodeIgniter\CLI\Commands $commands = null)
+    {
+        if ($logger !== null && $commands !== null) {
+            parent::__construct($logger, $commands);
+        }
+    }
+
+    /**
      * @var string
      */
     protected $group = 'Hot-UI';

@@ -65,21 +65,19 @@ final readonly class ComponentGenerator
         private readonly ?string $customStubsDir = null,
         ?FilesystemInterface $filesystem = null,
     ) {
+        // Initialize classes first so the namespace validator can run.
+        $this->nameTransformer = new NameTransformer();
+        $this->filesystem = $filesystem ?? new LocalFilesystem();
+        $this->paths = new ComponentPaths(null, $emoji);
+        $this->propertyValidator = new PropertyValidator();
+        $this->pathGenerator = new PathGenerator($viewsRoot, $this->paths);
+        $this->templateRenderer = new TemplateRenderer($this->filesystem, $templatesDir, $customStubsDir);
+
         if (! $this->nameTransformer->isValidNamespace($namespace)) {
             throw new InvalidNamespaceException($namespace);
         }
 
-        // ComponentPaths validates the emoji, so both share one rule.
-        $this->paths = new ComponentPaths(null, $emoji);
-        
-        // Initialize specialized classes
-        $this->filesystem ??= new LocalFilesystem();
-        $this->nameTransformer = new NameTransformer();
-        $this->propertyValidator = new PropertyValidator();
-        $this->pathGenerator = new PathGenerator($viewsRoot, $this->paths);
-        $this->templateRenderer = new TemplateRenderer($this->filesystem, $templatesDir, $customStubsDir);
-        
-        // Initialize content strategies
+        // Content strategies built once, after all dependencies are stable.
         $this->contentStrategies = [
             'class' => new ClassContentStrategy($this->templateRenderer, $this->nameTransformer),
             'view' => new ViewContentStrategy($this->templateRenderer, $this->nameTransformer),

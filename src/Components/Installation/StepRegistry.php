@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Components\Installation;
 
+use Components\Installation\Exception\CircularDependencyException;
+
 /**
  * Registry for installation steps.
  * 
@@ -61,7 +63,7 @@ final class StepRegistry
      */
     public function available(): array
     {
-        return array_filter($this->steps, fn (InstallationStep $step) => $step->isAvailable());
+        return array_filter($this->steps, fn (InstallationStep $step): bool => $step->isAvailable());
     }
 
     /**
@@ -71,7 +73,7 @@ final class StepRegistry
      */
     public function required(): array
     {
-        return array_filter($this->steps, fn (InstallationStep $step) => $step->isRequired());
+        return array_filter($this->steps, fn (InstallationStep $step): bool => $step->isRequired());
     }
 
     /**
@@ -81,7 +83,7 @@ final class StepRegistry
      */
     public function optional(): array
     {
-        return array_filter($this->steps, fn (InstallationStep $step) => ! $step->isRequired());
+        return array_filter($this->steps, fn (InstallationStep $step): bool => ! $step->isRequired());
     }
 
     /**
@@ -123,7 +125,7 @@ final class StepRegistry
         }
 
         if (isset($visiting[$id])) {
-            throw new \RuntimeException("Circular dependency detected: {$id}");
+            throw new CircularDependencyException($id);
         }
 
         $visiting[$id] = true;

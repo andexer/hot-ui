@@ -68,14 +68,29 @@ final readonly class TemplateRenderer
     private function resolveStubPath(string $file): string
     {
         // Prefer user-published stubs if available
-        if ($this->customStubsDir !== null) {
-            $customPath = rtrim($this->customStubsDir, '/\\').'/'.$file;
+        foreach ($this->candidateNames($file) as $candidate) {
+            if ($this->customStubsDir === null) {
+                continue;
+            }
+            $customPath = rtrim($this->customStubsDir, '/\\').'/'.$candidate;
             if ($this->filesystem->exists($customPath) && $this->filesystem->isReadable($customPath)) {
                 return $customPath;
             }
         }
 
         return rtrim($this->templatesDir, '/\\').'/'.$file;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function candidateNames(string $file): array
+    {
+        if (str_ends_with($file, '.php.stub')) {
+            return [$file, substr($file, 0, -strlen('.php.stub')).'.stub'];
+        }
+
+        return [$file];
     }
 
     /**

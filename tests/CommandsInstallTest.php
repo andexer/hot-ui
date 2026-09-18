@@ -25,15 +25,12 @@ final class CommandsInstallTest extends TestCase
         $reflection = new ReflectionClass($command);
 
         $group = $reflection->getProperty('group');
-        $group->setAccessible(true);
         self::assertSame('Hot-UI', $group->getValue($command));
 
         $name = $reflection->getProperty('name');
-        $name->setAccessible(true);
         self::assertSame('hot-ui:install', $name->getValue($command));
 
         $description = $reflection->getProperty('description');
-        $description->setAccessible(true);
         self::assertStringContainsString('installation', strtolower($description->getValue($command)));
     }
 
@@ -43,7 +40,6 @@ final class CommandsInstallTest extends TestCase
         $reflection = new ReflectionClass($command);
 
         $options = $reflection->getProperty('options');
-        $options->setAccessible(true);
         $optionsValue = $options->getValue($command);
 
         self::assertArrayHasKey('--auto', $optionsValue);
@@ -64,15 +60,12 @@ final class CommandsInstallTest extends TestCase
         $reflection = new ReflectionClass($command);
 
         $description = $reflection->getProperty('description');
-        $description->setAccessible(true);
         self::assertNotEmpty($description->getValue($command));
 
         $usage = $reflection->getProperty('usage');
-        $usage->setAccessible(true);
         self::assertNotEmpty($usage->getValue($command));
 
         $options = $reflection->getProperty('options');
-        $options->setAccessible(true);
         self::assertNotEmpty($options->getValue($command));
     }
 

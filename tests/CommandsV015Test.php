@@ -108,6 +108,20 @@ final class CommandsV015Test extends TestCase
         self::assertStringContainsString('Config/HotUI.php', $src);
     }
 
+    public function testDoctorCommandExists(): void
+    {
+        self::assertFileExists(__DIR__ . '/../src/Components/Commands/DoctorCommand.php');
+    }
+
+    public function testDoctorCommandHasCorrectNameAndStrictOption(): void
+    {
+        $src = (string) file_get_contents(__DIR__ . '/../src/Components/Commands/DoctorCommand.php');
+        self::assertStringContainsString("protected \$name = 'hot-ui:doctor';", $src);
+        self::assertStringContainsString('--strict', $src);
+        self::assertStringContainsString('HOTUI_SNAPSHOT_KEY', $src);
+        self::assertStringContainsString('js/app.js', $src);
+    }
+
     // -------------------------------------------------------------------------
     // ComponentGenerator custom stubs dir
     // -------------------------------------------------------------------------

@@ -17,7 +17,7 @@
 
 set -eu
 
-linter="bin/hot-ui lint"
+linter="bin/lint.php"
 
 root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 cd "$root"

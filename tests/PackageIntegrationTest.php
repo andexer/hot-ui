@@ -64,7 +64,13 @@ final class PackageIntegrationTest extends TestCase
 
     public function testPackageVersionMatchesExpected(): void
     {
-        self::assertSame('0.16.0', HotUI::VERSION);
+        $composer = json_decode((string) file_get_contents(dirname(__DIR__).'/composer.json'), true, 512, JSON_THROW_ON_ERROR);
+        $package = json_decode((string) file_get_contents(dirname(__DIR__).'/package.json'), true, 512, JSON_THROW_ON_ERROR);
+
+        // HotUI::VERSION is the single source of truth (see commit 67ad4e9);
+        // composer.json and package.json must stay in lockstep with it.
+        self::assertSame(HotUI::VERSION, $composer['version']);
+        self::assertSame(HotUI::VERSION, $package['version']);
     }
 
     public function testSharedAndInstanceRenderTheSamePage(): void

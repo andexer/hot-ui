@@ -115,6 +115,44 @@ final class TemplateRenderer
     }
 
     /**
+     * Renders a pre-compiled source file with the template scope bound to a
+     * given object (the Hotfire component), so `$this` inside the view refers
+     * to the component while $__ui still points at the backing Ui instance.
+     *
+     * @param string               $path    Absolute path to the compiled PHP file.
+     * @param object               $binding Object to expose as `$this` in the view.
+     * @param array<string, mixed> $data    Variables extracted into the template scope.
+     */
+    public function renderPathBound(string $path, object $binding, array $data = []): string
+    {
+        $real = realpath($path);
+        if ($real === false || ! is_file($real)) {
+            throw new CompiledTemplateNotFoundException($path);
+        }
+        unset($path);
+
+        $__ui = $this->ui;
+
+        $render = function (string $__file, array $__data) use ($__ui): string {
+            extract($__data, EXTR_OVERWRITE);
+            unset($__data);
+
+            ob_start();
+            try {
+                include $__file;
+
+                return (string) ob_get_clean();
+            } catch (\Throwable $exception) {
+                ob_end_clean();
+
+                throw $exception;
+            }
+        };
+
+        return $render->call($binding, $real, $data);
+    }
+
+    /**
      * Echoes a rendered template. Plates insert() parity for partial include.
      *
      * @param array<string, mixed> $data

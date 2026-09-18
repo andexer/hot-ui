@@ -3,14 +3,15 @@
     "description": "Hot-UI — Alpine.js islands for the Hot/UI PHP component library (zero-dependency). Only Alpine as runtime dependency.",
     "private": true,
     "type": "module",
-    "version": "0.16.0",
+    "version": "0.22.0",
     "license": "MIT",
     "scripts": {
         "dev": "esbuild js/src/app.ts --bundle --format=esm --target=es2020 --outfile=js/app.js --watch",
         "build:js": "esbuild js/src/app.ts --bundle --format=esm --target=es2020 --minify --outfile=js/app.js",
         "build:css": "tailwindcss -i css/hot-ui.css -o css/hot-ui.min.css --minify",
         "build": "npm run build:js && npm run build:css",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "test:browser": "node tests/browser/hotfire-smoke.mjs"
     },
     "dependencies": {
         "alpinejs": "^3.14.0"

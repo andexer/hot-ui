@@ -63,6 +63,26 @@ final class InvalidActionException extends \RuntimeException implements HotfireE
         );
     }
 
+    /** The action is not in the component's allowlist. */
+    public static function notAnAllowedAction(string $componentClass, string $method): self
+    {
+        return new self(
+            sprintf('Hotfire: action [%s] is not in the allowlist of %s.', $method, $componentClass),
+            $method,
+            $componentClass,
+        );
+    }
+
+    /** The property is locked and cannot be updated. */
+    public static function lockedProperty(string $componentClass, string $property): self
+    {
+        return new self(
+            sprintf('Hotfire: property [%s] is locked and cannot be updated in %s.', $property, $componentClass),
+            $property,
+            $componentClass,
+        );
+    }
+
     /** The property or method name the client tried to run. */
     public function getAction(): string
     {

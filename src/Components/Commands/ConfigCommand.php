@@ -171,13 +171,15 @@ use Components\Config\HotUI as HotUIConfig;
  * 
  * Publish this file to your application: php spark hot-ui:config --publish
  * 
- * @version 0.16.0
+ * @version 0.22.0
  */
 class HotUI extends HotUIConfig
 {
-    public function __construct()
+    public function __construct(?\Psr\Log\LoggerInterface $logger = null, ?\CodeIgniter\CLI\Commands $commands = null)
     {
-        parent::__construct();
+        if ($logger !== null && $commands !== null) {
+            parent::__construct($logger, $commands);
+        }
         
         // Override default configuration values here:
         

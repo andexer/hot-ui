@@ -102,7 +102,7 @@ php spark make:hotfire post.create --mfc --test
 ```
 
 Genera la clase `App\Components\Post\Create`, la plantilla
-`components/post/🔥create/create.view` y (con `--test`) cobertura
+`components/hotfire/post/🔥create/create.view` y (con `--test`) cobertura
 PHPUnit — todo cohabitando en la carpeta `🔥create/`, marcada con el emoji
 indicador (igual que el `⚡` de Livewire 4; cámbialo con `--emoji`).
 Ver [docs/hotfire.md](docs/hotfire.md#scaffolding-with-makehotfire).
