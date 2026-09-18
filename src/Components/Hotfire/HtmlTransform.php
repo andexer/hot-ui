@@ -69,7 +69,7 @@ final class HtmlTransform
         $names = implode('|', array_map(static fn (string $name): string => preg_quote($name, '/'), array_keys($directives)));
         $pattern = '/\s(hot:)('.$names.')((?:\.[A-Za-z0-9_-]+)*)\s*=\s*("([^"]*)"|\'([^\']*)\')/';
 
-        return preg_replace_callback(
+        $html = preg_replace_callback(
             $pattern,
             static function (array $match) use ($directives): string {
                 $attribute = $directives[$match[2]] ?? null;
@@ -88,9 +88,9 @@ final class HtmlTransform
             },
             $html,
         ) ?? $html;
-        
+
         // Handle hot:model-array special attribute
-        $html = preg_replace_callback(
+        return preg_replace_callback(
             '/\shot:model-array\s*=\s*("([^"]*)"|\'([^\']*)\')/i',
             static function (array $match): string {
                 $value = $match[2] !== '' ? $match[2] : ($match[3] ?? '');

@@ -19,24 +19,32 @@ final class CsrfProtection
      */
     public static function getToken(): ?string
     {
+        // First check standard CodeIgniter 4 helper
+        if (function_exists('csrf_hash')) {
+            $hash = csrf_hash();
+            if (is_string($hash) && $hash !== '') {
+                return $hash;
+            }
+        }
+
         // Try to get token from CI4 session
         if (function_exists('session')) {
             $session = session();
             if ($session !== null) {
-                return $session->get('csrf_token');
+                return $session->get('csrf_token') ?? $session->get('csrf_test_name');
             }
         }
 
         // Try to get from $_SESSION directly
         if (isset($_SESSION['csrf_token'])) {
-            return $_SESSION['csrf_token'];
+            return (string) $_SESSION['csrf_token'];
         }
 
         // Try to get from CI4 config (CI4 v4.4+)
-        if (defined('Config\\App') && class_exists('Config\\App')) {
+        if (class_exists('\\Config\\App')) {
             $app = new \Config\App();
-            if (isset($app->CSRFProtection) && $app->CSRFProtection) {
-                return $_SESSION[$app->CSRFTokenName] ?? null;
+            if (isset($app->CSRFProtection) && $app->CSRFProtection && isset($app->CSRFTokenName)) {
+                return isset($_SESSION[$app->CSRFTokenName]) ? (string) $_SESSION[$app->CSRFTokenName] : null;
             }
         }
 
@@ -50,8 +58,15 @@ final class CsrfProtection
      */
     public static function getTokenName(): string
     {
+        if (function_exists('csrf_token')) {
+            $name = csrf_token();
+            if (is_string($name) && $name !== '') {
+                return $name;
+            }
+        }
+
         // Try to get from CI4 config
-        if (defined('Config\\App') && class_exists('Config\\App')) {
+        if (class_exists('\\Config\\App')) {
             $app = new \Config\App();
             return $app->CSRFTokenName ?? 'csrf_token';
         }
@@ -66,8 +81,15 @@ final class CsrfProtection
      */
     public static function getHeaderName(): string
     {
+        if (function_exists('csrf_header')) {
+            $header = csrf_header();
+            if (is_string($header) && $header !== '') {
+                return $header;
+            }
+        }
+
         // Try to get from CI4 config
-        if (defined('Config\\App') && class_exists('Config\\App')) {
+        if (class_exists('\\Config\\App')) {
             $app = new \Config\App();
             return $app->CSRFHeaderName ?? 'X-CSRF-TOKEN';
         }

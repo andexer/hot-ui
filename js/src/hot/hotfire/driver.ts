@@ -38,7 +38,7 @@ interface ActionResult {
 
 type Interaction =
     | { name: 'call' | 'poll' | 'init'; method?: string; params?: unknown[]; target?: string }
-    | { name: 'model'; property: string; value: unknown; target?: string };
+    | { name: 'model'; property: string; value: unknown; target?: string; isArray?: boolean; remove?: boolean };
 
 type ModelControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 type HotfireHook = (payload: unknown) => void;
@@ -188,13 +188,18 @@ function attachRoot(root: HTMLElement): void {
         });
     });
 
-    const pollAttr = root.querySelector<HTMLElement>('[data-hot-poll]')?.dataset['hotPoll'];
+    const pollAttr = root.dataset['hotPoll'] ?? root.querySelector<HTMLElement>('[data-hot-poll]')?.dataset['hotPoll'];
     if (pollAttr) {
         const ms = Number.parseInt(pollAttr, 10);
         if (Number.isFinite(ms) && ms > 0) {
-            window.setInterval(() => {
+            const existing = timers.get(root);
+            if (existing !== undefined) {
+                window.clearInterval(existing);
+            }
+            const timerId = window.setInterval(() => {
                 void dispatch(root, actionUrl, { name: 'poll', target: 'poll' });
             }, ms);
+            timers.set(root, timerId);
         }
     }
 
@@ -337,11 +342,15 @@ function queueModelDispatch(root: HTMLElement, actionUrl: string | undefined, ta
     }
 
     const run = (): void => {
+        const isArray = target.hasAttribute('data-hot-model-array');
+        const isCheckbox = target instanceof HTMLInputElement && target.type === 'checkbox';
+        const val = isArray && isCheckbox ? target.value : valueOf(target);
         void dispatch(root, actionUrl, {
             name: 'model',
             property,
-            value: valueOf(target),
+            value: val,
             target: actionTarget(target, property),
+            ...(isArray ? { isArray: true, remove: isCheckbox ? !target.checked : false } : {}),
         });
     };
 
@@ -360,9 +369,10 @@ function requestHeaders(root: HTMLElement): Record<string, string> {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
     };
-    const csrf = root.dataset['hotCsrf'];
+    const csrf = root.dataset['hotCsrf'] ?? document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
     if (csrf) {
-        headers['X-CSRF-TOKEN'] = csrf;
+        const headerName = document.querySelector<HTMLMetaElement>('meta[name="csrf-header"]')?.content ?? 'X-CSRF-TOKEN';
+        headers[headerName] = csrf;
     }
     return headers;
 }
@@ -412,7 +422,7 @@ function download(content: string, filename: string, mimeType: string): void {
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function callHook(name: string, payload: unknown): void {

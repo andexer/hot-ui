@@ -19,6 +19,8 @@ use Components\HotUI;
  */
 final class DoctorCommand extends BaseCommand
 {
+    use CliOptions;
+
     protected $group = 'Hot-UI';
 
     protected $name = 'hot-ui:doctor';
@@ -39,7 +41,7 @@ final class DoctorCommand extends BaseCommand
      */
     public function run(array $params): int
     {
-        $strict = in_array('--strict', $params, true);
+        $strict = $this->has($params, 'strict') || $this->has($params, '--strict');
         $checks = $this->checks();
         $warnings = 0;
 
@@ -60,7 +62,10 @@ final class DoctorCommand extends BaseCommand
         CLI::newLine();
         CLI::write($warnings === 0 ? 'Hot-UI doctor found no issues.' : sprintf('Hot-UI doctor found %d warning(s).', $warnings), $warnings === 0 ? 'green' : 'yellow');
 
-        return $strict && $warnings > 0 ? EXIT_ERROR : EXIT_SUCCESS;
+        $exitError = defined('EXIT_ERROR') ? EXIT_ERROR : 1;
+        $exitSuccess = defined('EXIT_SUCCESS') ? EXIT_SUCCESS : 0;
+
+        return $strict && $warnings > 0 ? $exitError : $exitSuccess;
     }
 
     /**

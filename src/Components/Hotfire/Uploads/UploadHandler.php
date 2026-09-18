@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Components\Hotfire\Uploads;
 
+use Components\Support\Filesystem;
+
 /**
  * Upload handler for Hotfire components.
  * 
@@ -58,9 +60,7 @@ final class UploadHandler
     {
         $this->tempDir = $tempDir ?? sys_get_temp_dir().'/hotui-uploads';
         
-        if (! is_dir($this->tempDir)) {
-            mkdir($this->tempDir, 0755, true);
-        }
+        Filesystem::ensureDirectory($this->tempDir);
     }
 
     /**
@@ -245,10 +245,7 @@ final class UploadHandler
         }
 
         $dir = dirname($destination);
-        
-        if (! is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
+        Filesystem::ensureDirectory($dir);
 
         return rename($tempPath, $destination);
     }

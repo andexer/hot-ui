@@ -979,4 +979,65 @@ final class HotfireTest extends TestCase
             $this->ui(),
         );
     }
+
+    public function testValidateOnlyPreservesErrorsOnOtherFields(): void
+    {
+        $component = new TypedComponent();
+        $component->total = 0;
+        $component->email = 'invalid-email';
+
+        // Validate all to populate multiple errors
+        $component->validate();
+        self::assertTrue($component->hasErrors());
+        self::assertArrayHasKey('total', $component->getErrors());
+        self::assertArrayHasKey('email', $component->getErrors());
+
+        // Now validate only email with a valid email
+        $component->email = 'test@example.com';
+        $passed = $component->validateOnly(['email']);
+
+        self::assertTrue($passed);
+        self::assertArrayNotHasKey('email', $component->getErrors());
+        // The total error must still be preserved!
+        self::assertArrayHasKey('total', $component->getErrors());
+    }
+
+    public function testHtmlTransformConvertsModelArray(): void
+    {
+        $html = '<input hot:model-array="tags" value="admin">';
+        $transformed = HtmlTransform::apply($html);
+
+        self::assertStringContainsString('data-hot-model-array="tags"', $transformed);
+    }
+
+    public function testEventDispatcherForgetListenerOnlyRemovesTarget(): void
+    {
+        $called1 = false;
+        $called2 = false;
+        $listener1 = static function () use (&$called1): void { $called1 = true; };
+        $listener2 = static function () use (&$called2): void { $called2 = true; };
+
+        \Components\Hotfire\Events\EventDispatcher::listen('test.event', $listener1);
+        \Components\Hotfire\Events\EventDispatcher::listen('test.event', $listener2);
+
+        \Components\Hotfire\Events\EventDispatcher::forgetListener('test.event', $listener1);
+        \Components\Hotfire\Events\EventDispatcher::dispatch('test.event');
+
+        self::assertFalse($called1);
+        self::assertTrue($called2);
+
+        \Components\Hotfire\Events\EventDispatcher::forget('test.event');
+    }
+
+    public function testFormBinderGetNestedValue(): void
+    {
+        $component = new TypedComponent();
+        $component->user = ['profile' => ['role' => 'editor']];
+
+        $val = FormBinder::getNestedValue($component, 'user.profile.role');
+        self::assertSame('editor', $val);
+
+        $missing = FormBinder::getNestedValue($component, 'user.nonexistent.key');
+        self::assertNull($missing);
+    }
 }

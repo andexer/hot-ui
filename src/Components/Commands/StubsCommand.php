@@ -28,6 +28,8 @@ use Components\Support\Filesystem;
  */
 final class StubsCommand extends BaseCommand
 {
+    use CliOptions;
+
     /**
      * @var string
      */
@@ -65,13 +67,17 @@ final class StubsCommand extends BaseCommand
      */
     public function run(array $params): int
     {
-        $force = in_array('--force', $params, true);
-        $destination = rtrim(APPPATH, '/\\') . '/Components/stubs/hot-ui';
+        $force = $this->has($params, 'force') || $this->has($params, '--force');
+        $appPath = defined('APPPATH') ? APPPATH : (getcwd() . '/app');
+        $destination = rtrim($appPath, '/\\') . '/Components/stubs/hot-ui';
+
+        $exitError = defined('EXIT_ERROR') ? EXIT_ERROR : 1;
+        $exitSuccess = defined('EXIT_SUCCESS') ? EXIT_SUCCESS : 0;
 
         if (! Filesystem::ensureDirectory($destination)) {
             CLI::error(sprintf('Hot-UI: cannot create stubs directory %s.', $destination));
 
-            return EXIT_ERROR;
+            return $exitError;
         }
 
         $published = 0;
@@ -113,6 +119,6 @@ final class StubsCommand extends BaseCommand
 
         CLI::newLine();
 
-        return EXIT_SUCCESS;
+        return $exitSuccess;
     }
 }

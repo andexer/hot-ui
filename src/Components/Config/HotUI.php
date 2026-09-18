@@ -16,8 +16,7 @@ use Components\HotUI as HotUICore;
  * 
  * To publish this file to your application, run:
  *   php spark hot-ui:config --publish
- * 
- * @version 0.22.0
+ * @see \Components\HotUI::VERSION
  */
 class HotUI
 {

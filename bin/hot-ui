@@ -15,17 +15,17 @@ declare(strict_types=1);
  * Usage:
  *   php bin/hot-ui <command> [options]
  *   php bin/hot-ui --help
- * 
- * @version 0.22.0
+ * @see \Components\HotUI::VERSION
  */
 
 
 
+use Components\HotUI;
 use Components\Ui;
 
 require dirname(__DIR__).'/vendor/autoload.php';
 
-const VERSION = '0.22.0';
+const VERSION = HotUI::VERSION;
 
 /**
  * Main CLI dispatcher
@@ -44,7 +44,7 @@ function main(): int
         'hooks:uninstall' => commandHooksUninstall($args),
         'hooks:status' => commandHooksStatus($args),
         'help', '--help', '-h' => commandHelp(),
-        'version', '--version', '-v' => commandVersion(),
+        'version', '--version', '-v', 'version:set', 'version:sync' => commandVersion($args),
         default => commandHelp($command),
     };
 }
@@ -297,12 +297,75 @@ function commandHelp(?string $invalidCommand = null): int
 }
 
 /**
- * Version command
+ * Version command: displays or synchronizes version from HotUI::VERSION
  */
-function commandVersion(): int
+function commandVersion(array $args = []): int
 {
-    echo "Hot-UI CLI Tool v".VERSION."\n";
-    echo "Hot-UI Package v".\Components\HotUI::VERSION."\n";
+    $targetVersion = $args[0] ?? null;
+
+    if ($targetVersion !== null && $targetVersion !== '--sync') {
+        return syncVersion($targetVersion);
+    }
+
+    if ($targetVersion === '--sync') {
+        return syncVersion(\Components\HotUI::VERSION);
+    }
+
+    echo "Hot-UI v".\Components\HotUI::VERSION."\n";
+    return 0;
+}
+
+function syncVersion(string $newVersion): int
+{
+    $newVersion = ltrim(trim($newVersion), 'v');
+    $root = dirname(__DIR__);
+
+    // 1. Update HotUI::VERSION in src/Components/HotUI.php
+    $hotUiFile = $root.'/src/Components/HotUI.php';
+    $hotUiContent = file_get_contents($hotUiFile);
+    if ($hotUiContent !== false) {
+        $updated = preg_replace(
+            "/public const VERSION = '[^']+';/",
+            "public const VERSION = '{$newVersion}';",
+            $hotUiContent,
+            1,
+        );
+        if ($updated !== null) {
+            file_put_contents($hotUiFile, $updated);
+        }
+    }
+
+    // 2. Update composer.json
+    $composerFile = $root.'/composer.json';
+    $composerContent = file_get_contents($composerFile);
+    if ($composerContent !== false) {
+        $updated = preg_replace(
+            '/"version":\s*"[^"]+"/',
+            "\"version\": \"{$newVersion}\"",
+            $composerContent,
+            1,
+        );
+        if ($updated !== null) {
+            file_put_contents($composerFile, $updated);
+        }
+    }
+
+    // 3. Update package.json
+    $packageFile = $root.'/package.json';
+    $packageContent = file_get_contents($packageFile);
+    if ($packageContent !== false) {
+        $updated = preg_replace(
+            '/"version":\s*"[^"]+"/',
+            "\"version\": \"{$newVersion}\"",
+            $packageContent,
+            1,
+        );
+        if ($updated !== null) {
+            file_put_contents($packageFile, $updated);
+        }
+    }
+
+    echo "✓ Version synchronized to {$newVersion} (single source of truth: HotUI::VERSION)\n";
     return 0;
 }
 

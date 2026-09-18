@@ -38,13 +38,22 @@ final class Config
 
     /** Framework methods that can never be invoked as an action. */
     public const DEFAULT_RESERVED = [
-        'mount',
+        'boot',
         'booted',
-        'updated',
+        'mount',
         'hydrate',
+        'dehydrate',
         'state',
+        'updating',
+        'updated',
         'notifyUpdated',
+        'beforeAction',
+        'afterAction',
         'viewPath',
+        'lockProperty',
+        'isLocked',
+        'renderField',
+        'computedProperties',
     ];
 
     private static ?self $shared = null;

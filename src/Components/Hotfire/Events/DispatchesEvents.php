@@ -105,7 +105,7 @@ trait DispatchesEvents
     {
         foreach ($this->eventListeners as $event => $listeners) {
             foreach ($listeners as $listener) {
-                EventDispatcher::forget($event);
+                EventDispatcher::forgetListener($event, $listener);
             }
         }
         

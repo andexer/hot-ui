@@ -86,10 +86,11 @@ trait ValidatesRequests
             return true;
         }
 
-        $this->errors = [];
         $state = $this->state();
 
         foreach ($fields as $field) {
+            unset($this->errors[$field]);
+
             if (! isset($rules[$field])) {
                 continue;
             }
@@ -105,7 +106,13 @@ trait ValidatesRequests
             }
         }
 
-        return $this->errors === [];
+        foreach ($fields as $field) {
+            if (isset($this->errors[$field])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

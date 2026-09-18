@@ -97,6 +97,29 @@ final class EventDispatcher
     }
 
     /**
+     * Remove a specific listener for an event.
+     * 
+     * @param string $event Event name
+     * @param callable $listener Listener callback
+     * @return void
+     */
+    public static function forgetListener(string $event, callable $listener): void
+    {
+        if (! isset(self::$globalListeners[$event])) {
+            return;
+        }
+
+        self::$globalListeners[$event] = array_values(array_filter(
+            self::$globalListeners[$event],
+            static fn (callable $l): bool => $l !== $listener,
+        ));
+
+        if (self::$globalListeners[$event] === []) {
+            unset(self::$globalListeners[$event]);
+        }
+    }
+
+    /**
      * Remove all listeners for a component.
      * 
      * @param string $componentId Component ID

@@ -114,7 +114,11 @@ final class Engine
             
             // Handle array model updates (for checkboxes, multi-selects)
             if (isset($action['isArray']) && $action['isArray'] === true) {
-                $currentValue = $component->{$property} ?? [];
+                if ($stateProperty !== $property) {
+                    $currentValue = FormBinder::getNestedValue($component, $property);
+                } else {
+                    $currentValue = $component->{$property} ?? [];
+                }
                 if (! is_array($currentValue)) {
                     $currentValue = [];
                 }
@@ -172,6 +176,7 @@ final class Engine
             
             try {
                 $result = $component->{$method}(...$params);
+                $component->afterAction($method, $params);
                 
                 // Check if action returned a special response
                 if ($result instanceof RedirectResponse) {
@@ -217,8 +222,7 @@ final class Engine
                 throw InvalidActionException::invalidArguments($class, $method, $error->getMessage());
             }
             
-            // Call afterAction hook
-            $component->afterAction($method, $params);
+            // Call afterAction hook when not returning special response (if not already called)
         }
 
         return self::render($component, $actionUrl, $key, $ui, $config);

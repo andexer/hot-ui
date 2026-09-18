@@ -128,7 +128,7 @@ final class FormBinder
      * @param string $path Dot-notation path (e.g., "user.name")
      * @return mixed The nested value
      */
-    private static function getNestedValue(Component $component, string $path): mixed
+    public static function getNestedValue(Component $component, string $path): mixed
     {
         $keys = explode('.', $path);
         $value = $component;

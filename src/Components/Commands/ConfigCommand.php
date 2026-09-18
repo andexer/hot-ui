@@ -24,6 +24,8 @@ use Components\Support\Filesystem;
  */
 final class ConfigCommand extends BaseCommand
 {
+    use CliOptions;
+
     /**
      * @var string
      */
@@ -60,9 +62,9 @@ final class ConfigCommand extends BaseCommand
      */
     public function run(array $params): int
     {
-        $check   = in_array('--check', $params, true);
-        $publish = in_array('--publish', $params, true);
-        $force   = in_array('--force', $params, true);
+        $check   = $this->has($params, 'check') || $this->has($params, '--check');
+        $publish = $this->has($params, 'publish') || $this->has($params, '--publish');
+        $force   = $this->has($params, 'force') || $this->has($params, '--force');
 
         if ($publish) {
             return $this->publishConfig($force);
@@ -105,10 +107,10 @@ final class ConfigCommand extends BaseCommand
             CLI::write('Fix: add  HOTUI_SNAPSHOT_KEY=<32-char random string>  to your .env', 'yellow');
             CLI::newLine();
 
-            return EXIT_ERROR;
+            return defined('EXIT_ERROR') ? EXIT_ERROR : 1;
         }
 
-        return EXIT_SUCCESS;
+        return defined('EXIT_SUCCESS') ? EXIT_SUCCESS : 0;
     }
 
     // -------------------------------------------------------------------------
@@ -117,7 +119,11 @@ final class ConfigCommand extends BaseCommand
 
     private function publishConfig(bool $force): int
     {
-        $destination = rtrim(APPPATH, '/\\') . '/Config/HotUI.php';
+        $appPath = defined('APPPATH') ? APPPATH : (getcwd() . '/app');
+        $destination = rtrim($appPath, '/\\') . '/Config/HotUI.php';
+
+        $exitError = defined('EXIT_ERROR') ? EXIT_ERROR : 1;
+        $exitSuccess = defined('EXIT_SUCCESS') ? EXIT_SUCCESS : 0;
 
         if (! $force && is_file($destination)) {
             CLI::write('Skipped (exists): ', 'yellow');
@@ -126,20 +132,20 @@ final class ConfigCommand extends BaseCommand
             CLI::write('Use --force to overwrite.', 'yellow');
             CLI::newLine();
 
-            return EXIT_SUCCESS;
+            return $exitSuccess;
         }
 
         $configDir = dirname($destination);
         if (! Filesystem::ensureDirectory($configDir)) {
             CLI::error(sprintf('Hot-UI: cannot create directory %s.', clean_path($configDir)));
 
-            return EXIT_ERROR;
+            return $exitError;
         }
 
         if (file_put_contents($destination, $this->configStub(), LOCK_EX) === false) {
             CLI::error(sprintf('Hot-UI: cannot write %s.', clean_path($destination)));
 
-            return EXIT_ERROR;
+            return $exitError;
         }
 
         CLI::write('Published: ', 'green');
@@ -153,7 +159,9 @@ final class ConfigCommand extends BaseCommand
 
     private function configStub(): string
     {
-        return <<<'PHP'
+        $version = \Components\HotUI::VERSION;
+
+        return <<<PHP
 <?php
 
 declare(strict_types=1);
@@ -171,7 +179,7 @@ use Components\Config\HotUI as HotUIConfig;
  * 
  * Publish this file to your application: php spark hot-ui:config --publish
  * 
- * @version 0.22.0
+ * @version {$version}
  */
 class HotUI extends HotUIConfig
 {
